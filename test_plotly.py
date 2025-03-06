@@ -1,13 +1,8 @@
-"""
-Created on Thu Feb 27 16:01:17 2025
-
-@author: mar.eco
-"""
-
 import streamlit as st
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 import seaborn as sns
 
 # Random data to practice streamlit 
@@ -39,42 +34,38 @@ st.subheader("Global Energy Demand for All Scenarios")
 # Global data for each scenario (sum over sectors and regions)
 global_demand = df.groupby(['Year', 'Scenario'])['Value'].sum().reset_index()
 
-fig, ax = plt.subplots(figsize=(10, 6))
-for scenario in scenarios:
-    scenario_data = global_demand[global_demand['Scenario'] == scenario]
-    ax.plot(scenario_data['Year'], scenario_data['Value'], marker='o', label=scenario)
-
-ax.set_title("Global Energy Demand Over the Years (All Scenarios)")
-ax.set_xlabel("Year")
-ax.set_ylabel("Total Energy Demand")
-ax.legend(title='Scenario')
-
-st.pyplot(fig)
+# Create a line plot using Plotly
+fig = px.line(global_demand, x='Year', y='Value', color='Scenario', title="Global Energy Demand Over the Years (All Scenarios)",
+              labels={'Year': 'Year', 'Value': 'Total Energy Demand'})
+st.plotly_chart(fig)
 
 # ---- Panel with 4 Bar Charts for Each Scenario (1 bar per year, stacked by sector) ----
 
 st.subheader("Energy Demand by Sector for Each Scenario")
 
-# Define distinct colors for each sector (no more white)
-sector_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']  # These are more visible colors
+# Define distinct colors for each sector
+sector_colors = sns.color_palette("Blues", len(sectors))
 
-fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15, 10))
-axes = axes.flatten()
-
-for ax, scenario in zip(axes, scenarios):
+# Create the bar charts for each scenario
+for scenario in scenarios:
     scenario_data = df[df['Scenario'] == scenario]
     # Pivot the data to have years as index and sectors as columns
     pivot_data = scenario_data.pivot_table(index='Year', columns='Sector', values='Value', aggfunc='sum')
+    
+    # Create a stacked bar chart using Plotly
+    fig = go.Figure()
 
-    # Plot stacked bar chart with specific colors for each sector
-    pivot_data.plot(kind='bar', stacked=True, ax=ax, color=sector_colors)
-    ax.set_title(f"Energy Demand by Sector - {scenario}")
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Energy Demand")
-    ax.legend(title='Sector')
+    # Add traces for each sector
+    for i, sector in enumerate(sectors):
+        fig.add_trace(go.Bar(x=pivot_data.index, y=pivot_data[sector], name=sector,
+                             marker_color=sector_colors[i]))
 
-plt.tight_layout()
-st.pyplot(fig)
-
-
-
+    fig.update_layout(
+        barmode='stack',
+        title=f"Energy Demand by Sector - {scenario}",
+        xaxis_title="Year",
+        yaxis_title="Energy Demand",
+        legend_title="Sector"
+    )
+    
+    st.plotly_chart(fig)
