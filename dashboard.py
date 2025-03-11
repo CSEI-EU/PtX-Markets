@@ -25,7 +25,7 @@ df = pd.DataFrame(data_list)
 
 
 # Initiate the dashboard with title and graphs 
-st.set_page_config(layout='wide')
+# st.set_page_config(layout='wide')
 title_alignment = """
 <style>
 .centered-title {
