@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Stlite App</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@stlite/browser@0.76.0/build/style.css"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@0.76.0/build/stlite.js";
+      mount(
+        `
+import streamlit as st
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import plotly.express as px
+
+# Random data to practice streamlit dasboard
+np.random.seed(0)
+years = [2025, 2030, 2035, 2040, 2045, 2050]
+regions = ['Denmark', 'Sweden', 'Norway', 'Germany']
+sectors = ['Transport', 'Industry', 'Agriculture', 'Power']
+scenarios = ['Hydrogen', 'Electrification', 'Ammonia', 'Methanol']
+
+# Create the data frame
+data_list = []
+for scenario in scenarios:
+    for region in regions:
+        for sector in sectors:
+            for year in years:
+                value = np.random.randint(100, 500)
+                data_list.append({'Year': year, 'Region': region, 'Sector': sector, 'Scenario': scenario, 'Value': value})
+df = pd.DataFrame(data_list)
+
+
+# Initiate the dashboard with title and graphs 
+#st.set_page_config(layout='wide')
+title_alignment = """
+<style>
+.centered-title {
+text-align: center;
+}
+</style>
+<h1 class="centered-title">Energy demand dashboard</h1>
+"""
+st.markdown(title_alignment, unsafe_allow_html=True)
+
+
+# -------- First row : Global energy demand and key numbers --------
+st.subheader("Global Energy Demand")
+graph_global, key_num = st.columns((6, 4))
+
+global_demand = df.groupby(['Year', 'Scenario'])['Value'].sum().reset_index()
+
+# First column : graph of all scenario energy demand
+fig, ax = plt.subplots(figsize=(13,9))
+for scenario in scenarios:
+    scenario_data = global_demand[global_demand['Scenario'] == scenario]
+    ax.plot(scenario_data['Year'], scenario_data['Value'], label=scenario)
+
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.set_ylabel("Total Energy Demand")
+ax.legend(title='Scenario')
+
+with graph_global:
+    st.pyplot(fig)
+
+# Find scenario with the highest prediction
+highest_scenario = global_demand.groupby("Scenario")["Value"].max().idxmax()
+highest_value = global_demand.groupby("Scenario")["Value"].max().max()
+avg_demand_2050 = global_demand[global_demand["Year"] == 2050]["Value"].mean()
+avg_demand_2025 = global_demand[global_demand["Year"] == 2025]["Value"].mean()
+percent_increase = ((avg_demand_2050 - avg_demand_2025) / avg_demand_2025) * 100
+
+# Second column : Key numbers and info box using Streamlit built-ins
+with key_num:
+    with st.container():
+        st.metric(label="Predicted energy demand for 2050", value=f"{avg_demand_2050:.0f} GWh", delta=f"{percent_increase:.1f} %")
+
+    # Add additional info box using st.info()
+    st.info(f"**{highest_scenario}** scenario is predicted to have the highest energy demand at **{highest_value} GWh**.")
+
+
+
+st.markdown('''---''')
+# -------- Second row : bar chart for each scenario to show different sectors --------
+st.subheader("Energy Demand by Sector")
+
+# Define a blue color palette using colormap
+num_sectors = len(sectors)
+sector_colors = [cm.Blues(i / num_sectors) for i in range(1, num_sectors + 1)]
+
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10, 8))
+axes = axes.flatten()
+
+for ax, scenario in zip(axes, scenarios):
+    scenario_data = df[df['Scenario'] == scenario]
+
+    # Pivot data to have years as index and sectors as columns
+    pivot_data = scenario_data.pivot_table(index='Year', columns='Sector', values='Value', aggfunc='sum')
+    pivot_data.plot(kind='bar', stacked=True, ax=ax, color=sector_colors, legend=False)
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.set_title(f"{scenario} scenario", fontsize=16, fontweight='bold')
+    ax.set_ylabel("Energy Demand")
+    ax.set_xlabel("")
+    ax.set_xticklabels(pivot_data.index, rotation=45)
+
+# Creating a single legend for all graphs
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, title="Sectors", loc="lower center", ncol=len(sectors), bbox_to_anchor=(0.5, -0.08), fontsize=14, title_fontsize=16)
+plt.tight_layout()
+
+with st.container():
+    st.pyplot(fig)
+
+
+
+
+# ---- Third row : map of the region with demand by country ----
+regions_data = pd.DataFrame({
+    'Region': ['Denmark', 'Sweden', 'Norway', 'Germany'],
+    'lat': [56.2639, 59.0, 60.4720, 51.1657],
+    'lon': [9.5018, 15.0, 8.4689, 10.4515],
+    'Energy Demand (GWh)': [300, 400, 350, 500]  # Example to change afterwards
+})
+
+st.markdown('''---''')
+st.subheader("Energy Demand by Country in 2025")
+
+# Data for 2025 (can change or be chosen by user) and group by region
+global_demand_2025 = df[df['Year'] == 2025].groupby('Region')['Value'].sum().reset_index()
+regions_data = regions_data.merge(global_demand_2025, on='Region')
+
+# Create a plotly map
+fig = px.scatter_geo(
+    regions_data,
+    lat='lat',
+    lon='lon',
+    size='Value',  # Adjust marker size based on energy demand
+    size_max=20,
+    color='Value',  # Color markers based on energy demand
+    color_continuous_scale=px.colors.sequential.Reds,
+    hover_name='Region',
+    projection="natural earth",
+)
+
+# Update layout for better map visibility
+fig.update_traces(
+    marker=dict(line=dict(width=1, color='DarkSlateGrey')),
+    textposition="top center",  # Position text above markers
+    textfont=dict(size=10, color='black')
+)
+
+fig.update_layout(
+    geo=dict(
+        showland=True,
+        landcolor="white",
+        showocean=True,
+        oceancolor="lightgrey",
+        lakecolor="lightblue",
+        lataxis_range=[50, 70],
+        lonaxis_range=[5, 30],
+        bgcolor='white'
+    ),
+    margin=dict(l=0, r=0, t=50, b=0)  # Margins for a better layout
+)
+
+st.plotly_chart(fig, use_container_width=True)
+`,
+        document.getElementById("root"),
+      );
+    </script>
+  </body>
+</html>
