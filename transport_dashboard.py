@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 
 
-output_file = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\Desktop\REMIND\Results_REMIND_yearly.csv"
+output_file = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\Desktop\PtX-Markets\REMIND\Results_REMIND_yearly.csv"
 transport_data = pd.read_csv(output_file)
 transport_data['Year'] = transport_data['Year'].astype(int)
 
@@ -120,7 +120,7 @@ with graph_eu27:
 # Second column: Key numbers for EU27 global demand
 with key_num:
     st.metric(label="Predicted energy demand in 2050", 
-              value=f"{demand_2050:.2e} EJ", delta=f"{percent_change:.1f} decrease between 2025 and 2050")
+              value=f"{demand_2050:.2f} EJ", delta=f"{percent_change:.1f} decrease between 2025 and 2050")
     
     # Highlight the top energy-consuming subcategory in 2025 or 2050
     top_category_2025 = eu27_data[eu27_data['Year'] == 2025].groupby('Category')['Value'].sum().idxmax()
