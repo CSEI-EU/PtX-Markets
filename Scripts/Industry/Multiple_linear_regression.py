@@ -7,6 +7,9 @@ import datetime
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
+import os
+from osgeo import ogr
+
 
 # Based on Neuwirth et al (2024) 
 sector_feedstock = ['Physical output (kt steel)', 'Integrated steelworks (kt steel)',
@@ -16,7 +19,7 @@ sector_feedstock = ['Physical output (kt steel)', 'Integrated steelworks (kt ste
 sector_ind_heat = ['Iron and Steel ','Cement', 'Ceramics & other non metallic minerals', 'Glass production']
 
 
-demand = pd.read_excel("..\Scripts\Overview_JRC-IDEES_EU27.xlsx", sheet_name = 'Input')
+demand = pd.read_excel("Scripts\Overview_JRC-IDEES_EU27.xlsx", sheet_name = 'Input')
 
 region = 'European Union - 27 countries (from 2020)'
 #['European Union - 27 countries (from 2020)', 'Albania', 'Austria','Belgium', 'Bulgaria', 'Switzerland', 
