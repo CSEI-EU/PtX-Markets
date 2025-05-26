@@ -1,11 +1,45 @@
 import streamlit as st
+import os 
 import pandas as pd
 import plotly.express as px
 
-
-output_file = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\Desktop\PtX-Markets\REMIND\Results_REMIND_JRC.csv"
-transport_data = pd.read_csv(output_file)
+# Transport data output 
+output_transport_file = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\Desktop\PtX-Markets\REMIND\Results_REMIND_JRC.csv"
+transport_data = pd.read_csv(output_transport_file)
 transport_data['Year'] = transport_data['Year'].astype(int)
+
+# Industry data results 
+output_industry_path = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\Desktop\PtX-Markets\Scripts\Industry\Results_per_Country"
+industry_data = []
+industry_files = [f for f in os.listdir(output_industry_path) if f.endswith(".xlsx")]
+
+# Read each files and crete a final combined dataset
+for file_name in industry_files:
+    year, country = file_name.replace(".xlsx", "").split("_")
+    file_path = os.path.join(output_industry_path, file_name)
+    df = pd.read_excel(file_path)
+
+    # Replace missing values by 0 
+    # or indicate weither they are missing or not?
+    df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
+    print(df.head())
+    print(df.index)
+    print(df.columns)
+
+    for material in df.index:
+        for sector in df.columns:
+            industry_data.append({
+                "Year": int(year),
+                "Country": country,
+                "Sector": sector,
+                "Material": material.strip(),
+                "Value": df.loc[material, sector]
+            })
+
+industry_df = pd.DataFrame(industry_data)
+industry_df = industry_df.reset_index().rename(columns={industry_df.columns[0]: 'Feedstock'})
+industry_total = industry_df.melt(id_vars='Feedstock', var_name='Sector', value_name='Value')
+
 
 iso_to_country = {
     'AT': 'Austria', 'BE': 'Belgium', 'BG': 'Bulgaria', 'CY': 'Cyprus',
@@ -17,6 +51,7 @@ iso_to_country = {
     'SE': 'Sweden', 'SI': 'Slovenia', 'SK': 'Slovakia'
 }
 transport_data['Country_full'] = transport_data['Country'].map(iso_to_country)
+industry_df['Country_full'] = industry_df['Country'].map(iso_to_country)
 
 categories = [
     "FE|Transport|Freight|Road|Heavy",
@@ -88,10 +123,11 @@ def corresponding_cat(category):
         new_cat = "International Shipping"
     elif category == "FE|Transport|Freight|Domestic Shipping":
         new_cat = "Domestic Shipping"
-        
+
+    else:
+        return category
+    
     return(new_cat)
-
-
 
 
 # -------- Initiate the dashboard with title and graphs --------
@@ -108,40 +144,68 @@ st.markdown(title_alignment, unsafe_allow_html=True)
 
 
 # -------- First row : EU27 Global energy demand and key numbers --------
-st.subheader("EU27 Global energy demand (Transport)")
+st.subheader("EU27 Global energy demand")
 
-# Create a filtered dataset for the total EU27 data
-eu27_data = transport_data[transport_data['Country'] == 'EU27']
-eu27_global_demand = eu27_data.groupby('Year')['Value'].sum().reset_index()
+# Create a filtered dataset for EU27
+eu27_transport = transport_data[transport_data['Country'] == 'EU27']
+eu27_transport_demand = eu27_transport.groupby('Year')['Value'].sum().reset_index()
+eu27_transport_demand['Sector'] = 'Transport'
 
-# Calculate the values for 2025 and 2050 
-demand_2025 = eu27_global_demand[eu27_global_demand['Year'] == 2025]['Value'].values[0]
-demand_2050 = eu27_global_demand[eu27_global_demand['Year'] == 2050]['Value'].values[0]
-percent_change = ((demand_2050 - demand_2025) / demand_2025) * 100
+eu27_industry = industry_total[industry_total['Country'] == 'EU27']
+eu27_industry_demand = eu27_industry.groupby('Year')['Value'].sum().reset_index()
+eu27_industry_demand['Sector'] = 'Industry'
 
-fig = px.line(eu27_global_demand, x='Year', y='Value',
-              labels={'Value': 'Energy Demand (EJ)', 'Year': 'Year'})
+combined_demand = pd.concat([eu27_transport_demand, eu27_industry_demand], ignore_index=True)
 
+# Plot
+fig_combined = px.line(
+    combined_demand, x='Year', y='Value', color='Sector',
+    labels={'Value': 'Energy Demand (EJ)', 'Year': 'Year', 'Sector': 'Sector'},
+    markers=True
+)
 
+# Key metrics
+d_2025 = eu27_transport_demand[eu27_transport_demand['Year'] == 2025]['Value'].values[0]
+d_2050 = eu27_transport_demand[eu27_transport_demand['Year'] == 2050]['Value'].values[0]
+d_change = ((d_2050 - d_2025) / d_2025) * 100
+d_growth = ((d_2050 - d_2025) / (2050 - 2025)) / d_2025 * 100
+
+i_2030 = eu27_industry_demand[eu27_industry_demand['Year'] == 2030]['Value'].values[0]
+i_2050 = eu27_industry_demand[eu27_industry_demand['Year'] == 2050]['Value'].values[0]
+i_change = ((i_2050 - i_2030) / i_2030) * 100
+i_growth = ((i_2050 - i_2030) / (2050 - 2030)) / i_2030 * 100
+
+# Most demanding categories 
+def highest_category_info(data, year):
+    top_cat_key = data[data['Year'] == year].groupby('Category')['Value'].sum().idxmax()
+    return corresponding_cat(top_cat_key)
+
+top_transport_2025 = highest_category_info(eu27_transport, 2025)
+top_transport_2050 = highest_category_info(eu27_transport, 2050)
+
+top_industry_2030 = highest_category_info(eu27_industry, 2030)
+top_industry_2050 = highest_category_info(eu27_industry, 2050)
 
 graph_eu27, key_num = st.columns((6, 4))
+
 with graph_eu27:
-    st.plotly_chart(fig)
+    st.plotly_chart(fig_combined)
 
 # Second column: Key numbers for EU27 global demand
 with key_num:
-    st.metric(label="Predicted energy demand in 2050", 
-              value=f"{demand_2050:.2f} EJ", delta=f"{percent_change:.1f} decrease between 2025 and 2050")
-    
-    # Highlight the top energy-consuming subcategory in 2025 or 2050
-    top_category_2025 = eu27_data[eu27_data['Year'] == 2025].groupby('Category')['Value'].sum().idxmax()
-    top_category_2050 = eu27_data[eu27_data['Year'] == 2050].groupby('Category')['Value'].sum().idxmax()
-    top_category_2025 = corresponding_cat(top_category_2025)
-    top_category_2050 = corresponding_cat(top_category_2050)    
-    st.info(f"**{top_category_2025}** category is predicted to be the highest energy consumer in 2025, "
-            f"while in 2050, the highest demand is expected from **{top_category_2050}**.")
-    
-    
+    st.subheader("Transport")
+    st.metric("2050 Demand", f"{d_2050:.2f} EJ", delta=f"{d_change:.1f} % vs 2025")
+    st.info(f"Avg. annual growth rate: {d_growth:.1f} %")
+    st.info(f"Top category in 2025: **{top_transport_2025}**")
+    st.info(f"Top category in 2050: **{top_transport_2050}**")
+
+    st.subheader("Industry")
+    st.metric("2050 Demand", f"{i_2050:.2f} EJ", delta=f"{i_change:.1f} % vs 2030")
+    st.info(f"Avg. annual growth rate: {i_growth:.1f} %")
+    st.info(f"Top category in 2025: **{top_industry_2030}**")
+    st.info(f"Top category in 2050: **{top_industry_2050}**")
+
+
     # Average annual growth rate of energy demand
     avg_annual_growth_rate = ((demand_2050 - demand_2025) / (2050 - 2025)) / demand_2025 * 100
     st.info(f"The average annual growth rate of energy demand from 2025 to 2050 is "
@@ -309,4 +373,3 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
-
