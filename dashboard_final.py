@@ -2,6 +2,8 @@ import streamlit as st
 import os 
 import pandas as pd
 import plotly.express as px
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 # Transport data output 
 output_transport_file = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\Desktop\PtX-Markets\REMIND\Results_REMIND_JRC.csv"
@@ -17,28 +19,23 @@ industry_files = [f for f in os.listdir(output_industry_path) if f.endswith(".xl
 for file_name in industry_files:
     year, country = file_name.replace(".xlsx", "").split("_")
     file_path = os.path.join(output_industry_path, file_name)
-    df = pd.read_excel(file_path)
+    df = pd.read_excel(file_path, index_col=0)
 
     # Replace missing values by 0 
     # or indicate weither they are missing or not?
     df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
-    print(df.head())
-    print(df.index)
-    print(df.columns)
 
     for material in df.index:
         for sector in df.columns:
             industry_data.append({
                 "Year": int(year),
                 "Country": country,
-                "Sector": sector,
+                "Category": sector,
                 "Material": material.strip(),
                 "Value": df.loc[material, sector]
             })
 
 industry_df = pd.DataFrame(industry_data)
-industry_df = industry_df.reset_index().rename(columns={industry_df.columns[0]: 'Feedstock'})
-industry_total = industry_df.melt(id_vars='Feedstock', var_name='Sector', value_name='Value')
 
 
 iso_to_country = {
@@ -95,7 +92,6 @@ sub_category_mapping = {
     "FE|Transport|Freight|Domestic Shipping": "Freight: Shipping (Domestic)"
 }
 
-
 def corresponding_cat(category):
     if category == "FE|Transport|Freight|Road|Heavy":
         new_cat = "Goods road transport (Heavy)"
@@ -151,18 +147,31 @@ eu27_transport = transport_data[transport_data['Country'] == 'EU27']
 eu27_transport_demand = eu27_transport.groupby('Year')['Value'].sum().reset_index()
 eu27_transport_demand['Sector'] = 'Transport'
 
-eu27_industry = industry_total[industry_total['Country'] == 'EU27']
+eu27_industry = industry_df[industry_df['Country'] == 'EU27']
 eu27_industry_demand = eu27_industry.groupby('Year')['Value'].sum().reset_index()
 eu27_industry_demand['Sector'] = 'Industry'
 
 combined_demand = pd.concat([eu27_transport_demand, eu27_industry_demand], ignore_index=True)
 
 # Plot
-fig_combined = px.line(
-    combined_demand, x='Year', y='Value', color='Sector',
-    labels={'Value': 'Energy Demand (EJ)', 'Year': 'Year', 'Sector': 'Sector'},
-    markers=True
+fig_combined = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                             subplot_titles=("Transport Energy Demand", "Industry Energy Demand"))
+
+fig_combined.add_trace(
+    go.Scatter(x=eu27_transport_demand['Year'], y=eu27_transport_demand['Value'],
+               mode='lines', name='Transport'),
+    row=1, col=1
 )
+fig_combined.add_trace(
+    go.Scatter(x=eu27_industry_demand['Year'], y=eu27_industry_demand['Value'],
+               mode='lines', name='Industry'),
+    row=2, col=1
+)
+
+fig_combined.update_layout(height=600, width=800,
+                           title_text="EU27 Energy Demand by Sector",
+                           showlegend=False)
+
 
 # Key metrics
 d_2025 = eu27_transport_demand[eu27_transport_demand['Year'] == 2025]['Value'].values[0]
@@ -189,7 +198,7 @@ top_industry_2050 = highest_category_info(eu27_industry, 2050)
 graph_eu27, key_num = st.columns((6, 4))
 
 with graph_eu27:
-    st.plotly_chart(fig_combined)
+    st.plotly_chart(fig_combined, use_container_width=True)
 
 # Second column: Key numbers for EU27 global demand
 with key_num:
@@ -200,32 +209,23 @@ with key_num:
     st.info(f"Top category in 2050: **{top_transport_2050}**")
 
     st.subheader("Industry")
-    st.metric("2050 Demand", f"{i_2050:.2f} EJ", delta=f"{i_change:.1f} % vs 2030")
+    st.metric("2050 Demand", f"{i_2050:.2f}", delta=f"{i_change:.1f} % vs 2030")
     st.info(f"Avg. annual growth rate: {i_growth:.1f} %")
-    st.info(f"Top category in 2025: **{top_industry_2030}**")
+    st.info(f"Top category in 2030: **{top_industry_2030}**")
     st.info(f"Top category in 2050: **{top_industry_2050}**")
-
-
-    # Average annual growth rate of energy demand
-    avg_annual_growth_rate = ((demand_2050 - demand_2025) / (2050 - 2025)) / demand_2025 * 100
-    st.info(f"The average annual growth rate of energy demand from 2025 to 2050 is "
-            f"{avg_annual_growth_rate:.1f} % per year.")
 
 st.markdown('---')
 
 
-
-
 # -------- EU27 category breakdown over time --------
-st.subheader("Evolution of Transport Categories in EU27")
+st.subheader("Evolution of categories in EU27")
 
 custom_blues = ['#08306b', '#2171b5', '#6baed6', '#c6dbef', '#deebf7', '#b3cde3', '#a6bddb', '#9ebcda', '#8c96c6']
-eu27_data['MainCategory'] = eu27_data['Category'].map(main_category_mapping)
+eu27_transport['MainCategory'] = eu27_transport['Category'].map(main_category_mapping)
 
 # Group by year and main category
-main_grouped = eu27_data.groupby(['Year', 'MainCategory'])['Value'].sum().reset_index()
+main_grouped = eu27_transport.groupby(['Year', 'MainCategory'])['Value'].sum().reset_index()
 pivot_main = main_grouped.pivot(index='Year', columns='MainCategory', values='Value').fillna(0)
-
 
 main_categories = ['Road', 'Aviation', 'Rail', 'Shipping']
 available_main_categories = [cat for cat in ['Road', 'Aviation', 'Rail', 'Shipping'] if cat in pivot_main.columns]
@@ -235,7 +235,6 @@ fig_main = px.bar(
     pivot_main,
     x=pivot_main.index,
     y=available_main_categories,
-    title="EU27 Energy Demand by Transport Mode (Road, Aviation, Rail, Maritime)",
     labels={'value': 'Energy Demand (EJ)', 'Year': 'Year'},
     color_discrete_sequence=colors_main
 )
@@ -244,10 +243,33 @@ st.plotly_chart(fig_main)
 
 
 
+industry_grouped = eu27_industry.groupby(['Year', 'Category'])['Value'].sum().reset_index()
+pivot_industry = industry_grouped.pivot(index='Year', columns='Category', values='Value').fillna(0)
+
+custom_reds = ['#67000d', '#a50f15', '#cb181d', '#ef3b2c', '#fb6a4a', '#fc9272', '#fcbba1', '#fee0d2']
+available_industry_sectors = pivot_industry.columns.tolist()
+colors_industry = custom_reds[:len(available_industry_sectors)]
+
+# Plot
+fig_industry = px.bar(
+    pivot_industry,
+    x=pivot_industry.index,
+    y=available_industry_sectors,
+    labels={'value': 'Energy Demand ()', 'Year': 'Year'},
+    color_discrete_sequence=colors_industry
+)
+fig_industry.update_layout(
+    barmode='stack',
+    yaxis_title='Energy Demand ()',
+    legend_title='Industry Sector'
+)
+
+st.plotly_chart(fig_industry)
+
 
 # -------- Pie charts for category distribution in 2025 and 2050 --------
-eu27_data['SubCategory'] = eu27_data['Category'].map(sub_category_mapping)
-sub_data = eu27_data.groupby(['Year', 'SubCategory'])['Value'].sum().reset_index()
+eu27_transport['SubCategory'] = eu27_transport['Category'].map(sub_category_mapping)
+sub_data = eu27_transport.groupby(['Year', 'SubCategory'])['Value'].sum().reset_index()
 
 def split_and_plot(year):
     year_data = sub_data[sub_data['Year'] == year]
@@ -272,13 +294,10 @@ split_and_plot(2050)
 st.markdown("---")
 
 
-
-
 # -------- Energy demand by most consuming countries --------
 st.subheader("Energy Demand by country")
 
 data_without_eu27 = transport_data[transport_data['Country'] != 'EU27']
-
 # Sum over all categories for each countries and each year, get the top 5 consuming
 aggregated_data = data_without_eu27.groupby(['Country', 'Year'], as_index=False)['Value'].sum()
 top_countries = aggregated_data.groupby('Country')['Value'].sum().nlargest(5).index
@@ -286,13 +305,26 @@ filtered_data = aggregated_data[aggregated_data['Country'].isin(top_countries)]
 
 fig = px.line(filtered_data,
               x='Year', y='Value', color='Country',
-              title="Energy Demand for most consuming countries",
               labels={'Value': 'Energy Demand (EJ)', 'Year': 'Year'})
 
 st.plotly_chart(fig)
 
+# Plot the same for industry
+industry_without_eu27 = industry_df[industry_df['Country'] != 'EU27']
+industry_aggregated = industry_without_eu27.groupby(['Country', 'Year'], as_index=False)['Value'].sum()
 
+# Identify top 5 most energy-consuming
+top_industry_countries = industry_aggregated.groupby('Country')['Value'].sum().nlargest(5).index
+industry_filtered = industry_aggregated[industry_aggregated['Country'].isin(top_industry_countries)]
 
+fig_industry_countries = px.line(
+    industry_filtered,
+    x='Year',
+    y='Value',
+    color='Country',
+    labels={'Value': 'Energy Demand (EJ)', 'Year': 'Year'}
+)
+st.plotly_chart(fig_industry_countries)
 
 
 
