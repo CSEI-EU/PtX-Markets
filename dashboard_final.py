@@ -4,13 +4,14 @@ import pandas as pd
 import plotly.express as px
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+import pycountry
 
-# Transport data output 
+# Transport data file 
 output_transport_file = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\Desktop\PtX-Markets\REMIND\Results_REMIND_JRC.csv"
 transport_data = pd.read_csv(output_transport_file)
 transport_data['Year'] = transport_data['Year'].astype(int)
 
-# Industry data results 
+# Industry data files
 output_industry_path = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\Desktop\PtX-Markets\Scripts\Industry\Results_per_Country"
 industry_data = []
 industry_files = [f for f in os.listdir(output_industry_path) if f.endswith(".xlsx")]
@@ -154,29 +155,23 @@ eu27_industry_demand['Sector'] = 'Industry'
 combined_demand = pd.concat([eu27_transport_demand, eu27_industry_demand], ignore_index=True)
 
 # Plot
-fig_combined = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                             subplot_titles=("Transport energy demand", "Industry energy demand"))
+fig_combined = make_subplots(rows=2, cols=1, shared_xaxes=True,subplot_titles=("Transport", "Industry"))
+fig_combined.add_trace(go.Scatter(x=eu27_transport_demand['Year'], y=eu27_transport_demand['Value'],mode='lines', name='Transport'),
+    row=1, col=1)
+fig_combined.add_trace(go.Scatter(x=eu27_industry_demand['Year'], y=eu27_industry_demand['Value'],mode='lines', name='Industry'),
+    row=2, col=1)
 
-fig_combined.add_trace(
-    go.Scatter(x=eu27_transport_demand['Year'], y=eu27_transport_demand['Value'],
-               mode='lines', name='Transport'),
-    row=1, col=1
-)
-fig_combined.add_trace(
-    go.Scatter(x=eu27_industry_demand['Year'], y=eu27_industry_demand['Value'],
-               mode='lines', name='Industry'),
-    row=2, col=1
-)
-
-fig_combined.update_layout(height=600, width=800, title_text="EU27 Energy Demand by Sector",showlegend=False)
-
+fig_combined.update_yaxes(title_text="Energy demand (EJ)", row=1, col=1)
+fig_combined.update_yaxes(title_text="Energy demand (EJ)", row=2, col=1)
+fig_combined.update_layout(height=600, width=800,showlegend=False)
 
 # Key metrics
-d_2025 = eu27_transport_demand[eu27_transport_demand['Year'] == 2025]['Value'].values[0]
-d_2050 = eu27_transport_demand[eu27_transport_demand['Year'] == 2050]['Value'].values[0]
-d_change = ((d_2050 - d_2025) / d_2025) * 100
-d_growth = ((d_2050 - d_2025) / (2050 - 2025)) / d_2025 * 100
+t_2025 = eu27_transport_demand[eu27_transport_demand['Year'] == 2025]['Value'].values[0]
+t_2050 = eu27_transport_demand[eu27_transport_demand['Year'] == 2050]['Value'].values[0]
+t_change = ((t_2050 - t_2025) / t_2025) * 100
+t_growth = ((t_2050 - t_2025) / (2050 - 2025)) / t_2025 * 100
 
+# For industry compare 2030 to 2050
 i_2030 = eu27_industry_demand[eu27_industry_demand['Year'] == 2030]['Value'].values[0]
 i_2050 = eu27_industry_demand[eu27_industry_demand['Year'] == 2050]['Value'].values[0]
 i_change = ((i_2050 - i_2030) / i_2030) * 100
@@ -189,30 +184,173 @@ def highest_category_info(data, year):
 
 top_transport_2025 = highest_category_info(eu27_transport, 2025)
 top_transport_2050 = highest_category_info(eu27_transport, 2050)
-
 top_industry_2030 = highest_category_info(eu27_industry, 2030)
 top_industry_2050 = highest_category_info(eu27_industry, 2050)
 
 graph_eu27, key_num = st.columns((6, 4))
-
 with graph_eu27:
     st.plotly_chart(fig_combined, use_container_width=True)
 
 # Second column: Key numbers for EU27 global demand
 with key_num:
     st.subheader("Transport")
-    st.metric("2050 Demand", f"{d_2050:.2f} EJ", delta=f"{d_change:.1f} % vs 2025")
-    st.info(f"Avg. annual growth rate: {d_growth:.1f} %")
-    st.info(f"Top category in 2025: **{top_transport_2025}**")
-    st.info(f"Top category in 2050: **{top_transport_2050}**")
+    st.metric("2050 demand", f"{t_2050:.2f} EJ", delta=f"{t_change:.1f} % vs 2025")
+    st.info(f"""
+            Average annual growth rate: {t_growth:.1f} % \\
+            Top category in 2025: **{top_transport_2025}** \\
+            Top category in 2050: **{top_transport_2050}**
+            """)
+    st.markdown('---')
 
     st.subheader("Industry")
-    st.metric("2050 Demand", f"{i_2050:.2f} EJ", delta=f"{i_change:.1f} % vs 2030")
-    st.info(f"Avg. annual growth rate: {i_growth:.1f} %")
-    st.info(f"Top category in 2030: **{top_industry_2030}**")
-    st.info(f"Top category in 2050: **{top_industry_2050}**")
-
+    st.metric("2050 demand", f"{i_2050:.2f} EJ", delta=f"{i_change:.1f} % vs 2030")
+    st.info(f"""
+            Average annual growth rate: {i_growth:.1f} % \\
+            Top category in 2030: **{top_industry_2030}** \\
+            Top category in 2050: **{top_industry_2050}**
+            """)
+    
 st.markdown('---')
+
+# -------- Heatmaps of 2030 demand: Transport vs Industry --------
+st.subheader("Country-level energy demand by year")
+
+# Need to convert iso2 to iso3 country codes for plotly 
+def convert_to_alpha3(iso2):
+    try:
+        return pycountry.countries.get(alpha_2=iso2).alpha_3
+    except:
+        return None
+
+# Filter data for selected year 
+selected_year = st.selectbox("Select a year", [2030, 2040, 2050], index=0)
+transport = transport_data[(transport_data['Year'] == selected_year) & (transport_data['Country'] != 'EU27')]
+industry= industry_df[(industry_df['Year'] == selected_year) & (industry_df['Country'] != 'EU27')]
+
+transport['iso_alpha'] = transport['Country'].apply(convert_to_alpha3)
+industry['iso_alpha'] = industry['Country'].apply(convert_to_alpha3)
+
+# Aggregate by country
+t_map_data = transport.groupby('iso_alpha')['Value'].sum().reset_index()
+i_map_data = industry.groupby('iso_alpha')['Value'].sum().reset_index()
+
+transport_zmax = (transport_data[transport_data['Country'] != 'EU27'].groupby(['Year', 'Country'])['Value'].sum()).max()
+industry_zmax = (industry_df[industry_df['Country'] != 'EU27'].groupby(['Year', 'Country'])['Value'].sum()).max()
+
+# Side-by-side maps
+fig_maps = make_subplots(
+    rows=1, cols=2,
+    subplot_titles=["Transport Demand (2030)", "Industry Demand (2030)"],
+    specs=[[{"type": "choropleth"}, {"type": "choropleth"}]],
+    horizontal_spacing=0.05
+)
+
+# Transport map
+fig_maps.add_trace(go.Choropleth(
+    locations=t_map_data['iso_alpha'],
+    z=t_map_data['Value'],
+    colorscale="Reds",
+    zmin=0,
+    zmax=transport_zmax,
+    colorbar=dict(
+        title="Energy demand (EJ)",
+        titlefont=dict(size=14),
+        tickfont=dict(size=12),
+        x=0.43  
+    ),
+    showscale=True,
+    geo='geo1'
+), row=1, col=1)
+
+# Industry map
+fig_maps.add_trace(go.Choropleth(
+    locations=i_map_data['iso_alpha'],
+    z=i_map_data['Value'],
+    colorscale="Reds",
+    zmin=0,
+    zmax=industry_zmax,
+    colorbar=dict(title="Energy demand (EJ)"),
+    showscale=True,
+    geo='geo2'
+), row=1, col=2)
+
+fig_maps.update_layout(
+    height=800,
+    width=1400,
+    geo=dict(scope='europe', showland=True, landcolor="white", lataxis_range=[35, 70], lonaxis_range=[-15, 35]),
+    geo2=dict(scope='europe', showland=True, landcolor="white", lataxis_range=[35, 70], lonaxis_range=[-15, 35]),
+    margin=dict(t=50, l=20, r=20, b=10)
+)
+st.plotly_chart(fig_maps)
+
+
+# -------- Energy demand by most consuming countries --------
+st.subheader("Most energy-demanding countries over time")
+
+# Aggregate data per countries
+data_without_eu27 = transport_data[transport_data['Country'] != 'EU27']
+transport_agg = data_without_eu27.groupby(['Country', 'Year'], as_index=False)['Value'].sum()
+industry_without_eu27 = industry_df[industry_df['Country'] != 'EU27']
+industry_agg = industry_without_eu27.groupby(['Country', 'Year'], as_index=False)['Value'].sum()
+
+# Get top 5 countries for each sector
+top_transport_countries = transport_agg.groupby('Country')['Value'].sum().nlargest(5).index.tolist()
+top_industry_countries = industry_agg.groupby('Country')['Value'].sum().nlargest(5).index.tolist()
+
+# Combine unique countries and assign colors
+combined_countries = list(set(top_transport_countries + top_industry_countries))
+colors = px.colors.qualitative.Safe
+color_map = {country: colors[i % len(colors)] for i, country in enumerate(combined_countries)}
+
+# Filter datasets
+filtered_transport = transport_agg[transport_agg['Country'].isin(top_transport_countries)]
+filtered_industry = industry_agg[industry_agg['Country'].isin(top_industry_countries)]
+
+# Create Transport figure
+fig_transport = go.Figure()
+for country in top_transport_countries:
+    df = filtered_transport[filtered_transport['Country'] == country]
+    fig_transport.add_trace(go.Scatter(
+        x=df['Year'],
+        y=df['Value'],
+        mode='lines',
+        name=country,
+        line=dict(color=color_map[country])
+    ))
+
+fig_transport.update_layout(
+    title="Transport Energy Demand",
+    yaxis_title="Energy Demand (EJ)",
+    height=500,
+    width=600
+)
+
+# Create Industry figure
+fig_industry = go.Figure()
+for country in top_industry_countries:
+    df = filtered_industry[filtered_industry['Country'] == country]
+    fig_industry.add_trace(go.Scatter(
+        x=df['Year'],
+        y=df['Value'],
+        mode='lines',
+        name=country,
+        line=dict(color=color_map[country])
+    ))
+
+fig_industry.update_layout(
+    title="Industry Energy Demand",
+    yaxis_title="Energy Demand (EJ)",
+    height=500,
+    width=600
+)
+
+# Show side-by-side in Streamlit
+col1, col2 = st.columns(2)
+with col1:
+    st.plotly_chart(fig_transport)
+with col2:
+    st.plotly_chart(fig_industry)
+
 
 
 # -------- EU27 category breakdown over time --------
@@ -292,57 +430,12 @@ split_and_plot(2050)
 st.markdown("---")
 
 
-# -------- Energy demand by most consuming countries --------
-st.subheader("Energy Demand by country")
-
-data_without_eu27 = transport_data[transport_data['Country'] != 'EU27']
-# Sum over all categories for each countries and each year, get the top 5 consuming
-aggregated_data = data_without_eu27.groupby(['Country', 'Year'], as_index=False)['Value'].sum()
-top_countries = aggregated_data.groupby('Country')['Value'].sum().nlargest(5).index
-filtered_data = aggregated_data[aggregated_data['Country'].isin(top_countries)]
-
-fig = px.line(filtered_data,
-              x='Year', y='Value', color='Country',
-              labels={'Value': 'Energy Demand (EJ)', 'Year': 'Year'})
-
-st.plotly_chart(fig)
-
-# Plot the same for industry
-industry_without_eu27 = industry_df[industry_df['Country'] != 'EU27']
-industry_aggregated = industry_without_eu27.groupby(['Country', 'Year'], as_index=False)['Value'].sum()
-
-# Identify top 5 most energy-consuming
-top_industry_countries = industry_aggregated.groupby('Country')['Value'].sum().nlargest(5).index
-industry_filtered = industry_aggregated[industry_aggregated['Country'].isin(top_industry_countries)]
-
-fig_industry_countries = px.line(
-    industry_filtered,
-    x='Year',
-    y='Value',
-    color='Country',
-    labels={'Value': 'Energy Demand (EJ)', 'Year': 'Year'}
-)
-st.plotly_chart(fig_industry_countries)
-
-
-
 # ---- Third row : map of the region with demand by country ----
 target_category = "FE|Transport|Pass|Road|LDV|Four Wheelers"
 filtered_data = transport_data[
     (transport_data['Category'] == target_category) &
     (transport_data['Country'] != 'EU27')  # Exclude total of eu27
 ]
-import pycountry
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
-
-# Need to convert iso2 to iso3 country codes for plotly 
-def convert_to_alpha3(iso2):
-    try:
-        return pycountry.countries.get(alpha_2=iso2).alpha_3
-    except:
-        return None
-
 
 filtered_data['iso_alpha'] = filtered_data['Country'].apply(convert_to_alpha3)
 years_to_plot = [2020, 2050]
