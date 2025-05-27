@@ -32,7 +32,7 @@ for file_name in industry_files:
                 "Country": country,
                 "Category": sector,
                 "Material": material.strip(),
-                "Value": df.loc[material, sector]
+                "Value": df.loc[material, sector] * 3.6 * 0.000001
             })
 
 industry_df = pd.DataFrame(industry_data)
@@ -155,7 +155,7 @@ combined_demand = pd.concat([eu27_transport_demand, eu27_industry_demand], ignor
 
 # Plot
 fig_combined = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                             subplot_titles=("Transport Energy Demand", "Industry Energy Demand"))
+                             subplot_titles=("Transport energy demand", "Industry energy demand"))
 
 fig_combined.add_trace(
     go.Scatter(x=eu27_transport_demand['Year'], y=eu27_transport_demand['Value'],
@@ -168,9 +168,7 @@ fig_combined.add_trace(
     row=2, col=1
 )
 
-fig_combined.update_layout(height=600, width=800,
-                           title_text="EU27 Energy Demand by Sector",
-                           showlegend=False)
+fig_combined.update_layout(height=600, width=800, title_text="EU27 Energy Demand by Sector",showlegend=False)
 
 
 # Key metrics
@@ -209,7 +207,7 @@ with key_num:
     st.info(f"Top category in 2050: **{top_transport_2050}**")
 
     st.subheader("Industry")
-    st.metric("2050 Demand", f"{i_2050:.2f}", delta=f"{i_change:.1f} % vs 2030")
+    st.metric("2050 Demand", f"{i_2050:.2f} EJ", delta=f"{i_change:.1f} % vs 2030")
     st.info(f"Avg. annual growth rate: {i_growth:.1f} %")
     st.info(f"Top category in 2030: **{top_industry_2030}**")
     st.info(f"Top category in 2050: **{top_industry_2050}**")
