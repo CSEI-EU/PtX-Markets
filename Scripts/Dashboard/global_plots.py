@@ -6,8 +6,8 @@ from mappings import corresponding_cat
 from process import convert_to_alpha3
 
 
-def get_eu27_demand(df, sector_name):
-    df_eu27 = df[df['Country'] == 'EU27']
+def get_eu27_demand(df, country_name, sector_name):
+    df_eu27 = df[df['Country'] == country_name]
     df_grouped = df_eu27.groupby('Year')['Value'].sum().reset_index()
     df_grouped['Sector'] = sector_name
 

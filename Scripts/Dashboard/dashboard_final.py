@@ -33,37 +33,41 @@ text-align: center;
 st.markdown(title_alignment, unsafe_allow_html=True)
 
 
+# Make a choice for country 
+all_countries = sorted(transport_data['Country'].unique())
+selected_country = st.selectbox("Select a country:", all_countries)
+
 # -------- EU27 Global energy demand and key numbers --------
-st.subheader("EU27 Global energy demand")
+st.subheader(f"{selected_country} Global energy demand")
 
 # Get EU27 data
-eu27_transport, eu27_transport_demand = get_eu27_demand(transport_data, transport_name)
-eu27_industry, eu27_industry_demand = get_eu27_demand(industry_df, industry_name)
-combined_demand = pd.concat([eu27_transport_demand, eu27_industry_demand], ignore_index=True)
+country_transport, country_transport_demand = get_eu27_demand(transport_data, selected_country, transport_name)
+country_industry, country_industry_demand = get_eu27_demand(industry_df, selected_country,industry_name)
+combined_demand = pd.concat([country_transport_demand, country_industry_demand], ignore_index=True)
 
 # Plot of both sectors
-fig_combined = create_eu27_combined_plot(eu27_transport_demand, transport_name, eu27_industry_demand, industry_name)
+fig_combined = create_eu27_combined_plot(country_transport_demand, transport_name, country_industry_demand, industry_name)
 
 # Key metrics
-t_2025 = eu27_transport_demand[eu27_transport_demand['Year'] == 2025]['Value'].values[0]
-t_2050 = eu27_transport_demand[eu27_transport_demand['Year'] == 2050]['Value'].values[0]
+t_2025 = country_transport_demand[country_transport_demand['Year'] == 2025]['Value'].values[0]
+t_2050 = country_transport_demand[country_transport_demand['Year'] == 2050]['Value'].values[0]
 t_change, t_growth = calculate_growth(t_2025, 2025, t_2050, 2050)
 
-i_2030 = eu27_industry_demand[eu27_industry_demand['Year'] == 2030]['Value'].values[0]
-i_2050 = eu27_industry_demand[eu27_industry_demand['Year'] == 2050]['Value'].values[0]
+i_2030 = country_industry_demand[country_industry_demand['Year'] == 2030]['Value'].values[0]
+i_2050 = country_industry_demand[country_industry_demand['Year'] == 2050]['Value'].values[0]
 i_change, i_growth = calculate_growth(i_2030, 2030, i_2050, 2050)
 
 # Most demanding categories 
-top_transport_2025 = highest_category_info(eu27_transport, 2025)[1]
-top_transport_2050 = highest_category_info(eu27_transport, 2050)[1]
-top_industry_2030 = highest_category_info(eu27_industry, 2030)[1]
-top_industry_2050 = highest_category_info(eu27_industry, 2050)[1]
+top_transport_2025 = highest_category_info(country_transport, 2025)[1]
+top_transport_2050 = highest_category_info(country_transport, 2050)[1]
+top_industry_2030 = highest_category_info(country_industry, 2030)[1]
+top_industry_2050 = highest_category_info(country_industry, 2050)[1]
 
 graph_eu27, key_num = st.columns((6, 4))
 with graph_eu27:
     st.plotly_chart(fig_combined, use_container_width=True)
 
-# Second column: Key numbers for EU27 global demand
+# Second column: Key numbers for global demand
 with key_num:
     st.subheader(transport_name)
     st.metric("2050 demand", f"{t_2050:.2f} EJ", delta=f"{t_change:.1f} % vs 2025")
@@ -75,7 +79,7 @@ with key_num:
     st.markdown('---')
 
     st.subheader(industry_name)
-    st.metric("2050 demand", f"{i_2050:.2f} EJ", delta=f"{i_change:.1f} % vs 2030")
+    st.metric("2050 demand", f"{i_2050:.4f} EJ", delta=f"{i_change:.1f} % vs 2030")
     st.info(f"""
             Average annual growth rate: {i_growth:.1f} % \\
             Top category in 2030: **{top_industry_2030}** \\
@@ -114,28 +118,27 @@ custom_reds = ['#67000d', '#cb181d', "#f55c2d"]
 tab1, tab2 = st.tabs(["Transport", "Industry"])
 
 with tab1:
-    st.subheader("Evolution of categories in EU27 - Transport")
+    st.subheader("Evolution of categories - Transport")
 
     # ----- Bar plot for main categories -----
-    fig_main_transport = plot_main_transport_stack(eu27_transport, custom_blues)
+    fig_main_transport = plot_main_transport_stack(country_transport, custom_blues)
     st.plotly_chart(fig_main_transport)
 
     # ----- Pie chars for categories -----
-    st.subheader("Subcategory: Passenger vs Freight")
-    plot_transport_pie_charts(eu27_transport, 2025)
-    plot_transport_pie_charts(eu27_transport, 2050)
+    plot_transport_pie_charts(country_transport, 2025)
+    plot_transport_pie_charts(country_transport, 2050)
 
     # ------ Heat maps for most consuming category --------
-    target_category = highest_category_info(eu27_transport, 2050)[0]
+    target_category = highest_category_info(country_transport, 2050)[0]
     fig_cat_transport = plot_transport_heatmap(transport_data, target_category)
     st.plotly_chart(fig_cat_transport)
 
 
 with tab2:
-    st.subheader("Evolution of categories in EU27 - Industry")
+    st.subheader("Evolution of categories - Industry")
 
     # ----- Bar plot for main categories -----
-    fig_main_industry = plot_main_industry_bar(eu27_industry, custom_reds)
+    fig_main_industry = plot_main_industry_bar(country_industry, custom_reds)
     st.plotly_chart(fig_main_industry)
 
     # ----- Pie chars for categories -----
