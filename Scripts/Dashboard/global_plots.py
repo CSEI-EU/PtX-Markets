@@ -5,6 +5,20 @@ import plotly.express as px
 from mappings import corresponding_cat
 from process import convert_to_alpha3
 
+'''
+This file contains functions to visualize global trends in Trnasport and Industry sectors.
+The functions are built using Plotly and can be supported by different sections of Streamlit dashboard.
+
+Functions included: 
+- get_eu27_demand: Filters and aggregates demand data for EU27 or a specified country.
+- create_eu27_combined_plot: Plots transport and industry demand evolution over time.
+- calculate_growth: Computes total and annual growth percentages between two years.
+- highest_category_info: Identifies the most energy-demanding category in a given year.
+- create_demand_heatmaps: Creates choropleth maps for transport and industry demand in Europe.
+- aggregate_country_demand: Aggregates yearly demand data by country and identifies top 5 consumers.
+- plot_top_countries_over_time: Plots energy demand trends for top countries.
+- create_top_demanding_countries_figures: Combines transport and industry plots for top-consuming countries.
+'''
 
 def get_eu27_demand(df, country_name, sector_name):
     df_eu27 = df[df['Country'] == country_name]
