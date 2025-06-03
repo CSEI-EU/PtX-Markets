@@ -15,7 +15,16 @@ industry_path = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\D
 transport_data = load_transport_data(transport_file)
 industry_df = load_industry_data(industry_path)
 
+fuel_transport = transport_data[transport_data['Category'].isin(transport_fuel_paths)].copy()
+fuel_transport[["MainCategory", "Fuel"]] = fuel_transport["Category"].apply(
+    lambda x: pd.Series(extract_main_and_fuel(x, categories))
+)
+
 transport_data['Country_full'] = transport_data['Country'].map(iso_to_country)
+transport_data = transport_data[transport_data["Category"].isin(categories)]
+transport_data["MainCategory"] = transport_data["Category"]
+
+
 industry_df['Country_full'] = industry_df['Country'].map(iso_to_country)
 transport_name = 'Transport'
 industry_name = 'Industry'
@@ -127,6 +136,15 @@ with tab1:
     # ----- Pie chars for categories -----
     plot_transport_pie_charts(country_transport, 2025)
     plot_transport_pie_charts(country_transport, 2050)
+
+    available_cats = sorted(fuel_transport["MainCategory"].unique())
+    selected_cat = st.selectbox("Select transport category:", available_cats)
+    filtered_df = fuel_transport[fuel_transport["MainCategory"] == selected_cat]
+    st.dataframe(filtered_df)
+
+    years = sorted(fuel_transport['Year'].unique())
+    selected_year = st.selectbox("Select year:", years)
+    plot_transport_fuel_pie_charts(fuel_transport, selected_cat, selected_year)
 
     # ------ Heat maps for most consuming category --------
     target_category = highest_category_info(country_transport, 2050)[0]

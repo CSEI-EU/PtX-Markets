@@ -8,7 +8,19 @@ from mappings import corresponding_cat
 from mappings import *
 import streamlit as st
 
+'''
+This module gives visualization functions specifically focused on energy demand in the 
+industry sector across EU27 countries and individual nations. These functions are intended to be used with a Streamlit dashboard to illustrate interactive exploration of sectoral 
+and material-based energy use.
 
+Functions included:
+- plot_main_industry_bar: Creates a stacked bar chart showing the evolution of industry demand by category over time.
+- plot_industry_pie: Displays two side-by-side pie charts showing the breakdown of energy demand by industry category and by fuel/material for a selected year.
+- plot_industry_choropleth: Generates choropleth maps for a specific industry category to compare geographic distribution of demand in 2030 and 2050.
+'''
+
+
+# ---- Bar plots ----
 def plot_main_industry_bar(eu27_industry, colors):
     industry_grouped = eu27_industry.groupby(['Year', 'Category'])['Value'].sum().reset_index()
     pivot_industry = industry_grouped.pivot(index='Year', columns='Category', values='Value').fillna(0)
@@ -28,7 +40,7 @@ def plot_main_industry_bar(eu27_industry, colors):
     return fig
 
 
-
+# ---- Pie charts ----
 def plot_industry_pie(industry_df, year):
     data_year = industry_df[industry_df['Year'] == year].copy()
     cat_data = data_year.groupby('Category')['Value'].sum().reset_index()
@@ -57,8 +69,6 @@ def plot_industry_pie(industry_df, year):
             color_discrete_map=industry_fuel_colors
         )
         st.plotly_chart(fig_mat)
-
-
 
 
 # ---- Heatmap ----

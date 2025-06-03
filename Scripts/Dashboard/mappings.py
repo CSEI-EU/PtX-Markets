@@ -36,6 +36,119 @@ main_category_mapping = {
     "FE|Transport|Freight|Domestic Shipping": "Shipping"
 }
 
+transport_fuel_paths = [
+    # Freight Road Heavy
+    "FE|Transport|Freight|Road|Heavy|Electricity",
+    "FE|Transport|Freight|Road|Heavy|Hydrogen",
+    "FE|Transport|Freight|Road|Heavy|Gases",
+    "FE|Transport|Freight|Road|Heavy|Gases|Biomass",
+    "FE|Transport|Freight|Road|Heavy|Gases|Fossil",
+    "FE|Transport|Freight|Road|Heavy|Gases|Hydrogen",
+    "FE|Transport|Freight|Road|Heavy|Liquids",
+    "FE|Transport|Freight|Road|Heavy|Liquids|Biomass",
+    "FE|Transport|Freight|Road|Heavy|Liquids|Fossil",
+    "FE|Transport|Freight|Road|Heavy|Liquids|Hydrogen",
+
+    # Freight Road Light
+    "FE|Transport|Freight|Road|Light|Electricity",
+    "FE|Transport|Freight|Road|Light|Hydrogen",
+    "FE|Transport|Freight|Road|Light|Gases",
+    "FE|Transport|Freight|Road|Light|Gases|Biomass",
+    "FE|Transport|Freight|Road|Light|Gases|Fossil",
+    "FE|Transport|Freight|Road|Light|Gases|Hydrogen",
+    "FE|Transport|Freight|Road|Light|Liquids",
+    "FE|Transport|Freight|Road|Light|Liquids|Biomass",
+    "FE|Transport|Freight|Road|Light|Liquids|Fossil",
+    "FE|Transport|Freight|Road|Light|Liquids|Hydrogen",
+
+    # Passenger Road Bus
+    "FE|Transport|Pass|Road|Bus|Electricity",
+    "FE|Transport|Pass|Road|Bus|Hydrogen",
+    "FE|Transport|Pass|Road|Bus|Gases",
+    "FE|Transport|Pass|Road|Bus|Gases|Biomass",
+    "FE|Transport|Pass|Road|Bus|Gases|Fossil",
+    "FE|Transport|Pass|Road|Bus|Gases|Hydrogen",
+    "FE|Transport|Pass|Road|Bus|Liquids",
+    "FE|Transport|Pass|Road|Bus|Liquids|Biomass",
+    "FE|Transport|Pass|Road|Bus|Liquids|Fossil",
+    "FE|Transport|Pass|Road|Bus|Liquids|Hydrogen",
+
+    # Passenger Road LDV Four Wheelers
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Electricity",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Hydrogen",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Gases",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Gases|Biomass",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Gases|Fossil",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Gases|Hydrogen",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Liquids",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Liquids|Biomass",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Liquids|Fossil",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Liquids|Hydrogen",
+
+    # Passenger Road LDV Two Wheelers
+    "FE|Transport|Pass|Road|LDV|Two Wheelers|Electricity",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers|Liquids",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers|Liquids|Biomass",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers|Liquids|Fossil",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers|Liquids|Hydrogen",
+
+    # Bunkers Freight International Shipping
+    "FE|Transport|Bunkers|Freight|International Shipping|Liquids",
+
+    # Freight Domestic Shipping
+    "FE|Transport|Freight|Domestic Shipping|Liquids",
+    "FE|Transport|Freight|Domestic Shipping|Liquids|Biomass",
+    "FE|Transport|Freight|Domestic Shipping|Liquids|Fossil",
+    "FE|Transport|Freight|Domestic Shipping|Liquids|Hydrogen",
+
+    # Bunkers Pass International Aviation
+    "FE|Transport|Bunkers|Pass|International Aviation|Liquids",
+
+    # Passenger Domestic Aviation
+    "FE|Transport|Pass|Domestic Aviation|Hydrogen",
+    "FE|Transport|Pass|Domestic Aviation|Liquids",
+    "FE|Transport|Pass|Domestic Aviation|Liquids|Biomass",
+    "FE|Transport|Pass|Domestic Aviation|Liquids|Fossil",
+    "FE|Transport|Pass|Domestic Aviation|Liquids|Hydrogen",
+
+    # Passenger Aviation
+    "FE|Transport|Pass|Aviation|Hydrogen",
+    "FE|Transport|Pass|Aviation|Liquids",
+    "FE|Transport|Pass|Aviation|Liquids|Biomass",
+    "FE|Transport|Pass|Aviation|Liquids|Fossil",
+    "FE|Transport|Pass|Aviation|Liquids|Hydrogen",
+
+    # Passenger Rail
+    "FE|Transport|Pass|Rail|Hydrogen",
+    "FE|Transport|Pass|Rail|Liquids",
+    "FE|Transport|Pass|Rail|Liquids|Biomass",
+    "FE|Transport|Pass|Rail|Liquids|Fossil",
+    "FE|Transport|Pass|Rail|Liquids|Hydrogen",
+
+    # Freight Rail
+    "FE|Transport|Freight|Rail|Hydrogen",
+    "FE|Transport|Freight|Rail|Liquids", 
+    "FE|Transport|Freight|Rail|Liquids|Biomass",
+    "FE|Transport|Freight|Rail|Liquids|Fossil",
+    "FE|Transport|Freight|Rail|Liquids|Hydrogen",
+]
+
+
+def extract_main_and_fuel(category_str, categories):
+    # Sort categories by length descending to match longest prefix first
+    categories_sorted = sorted(categories, key=len, reverse=True)
+    
+    for cat_prefix in categories_sorted:
+        if category_str.startswith(cat_prefix):
+            # Fuel is whatever comes after the prefix (skip the '|')
+            remainder = category_str[len(cat_prefix):]
+            if remainder.startswith("|"):
+                remainder = remainder[1:]  # remove leading '|'
+            return cat_prefix, remainder
+    # If no prefix matched, return None and full string as fuel
+    return None, category_str
+
+
 transport_main_colors = {
     "Road": "#e41a1c",      
     "Aviation": "#377eb8",  
@@ -89,6 +202,16 @@ industry_fuel_colors = {
     "Overall demand": "#b2df8a",
     "Other": "#1f78b4"
 }
+
+
+transport_fuel_colors = {
+    "Electricity": "#a6cee3",
+    "Hydrogen": "#fdbf6f",
+    "Gases": "#fb9a99",
+    "Liquids": "#1f78b4",
+    "Other": "#e31a1c", 
+}
+
 
 
 def corresponding_cat(category):

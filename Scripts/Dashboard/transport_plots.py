@@ -29,7 +29,6 @@ def plot_main_transport_stack(eu27_transport, colors):
     return fig
 
 
-
 def plot_transport_pie_charts(eu27_transport, year):
     df = eu27_transport.copy()
     df['SubCategory'] = df['Category'].map(sub_category_mapping)
@@ -62,6 +61,69 @@ def plot_transport_pie_charts(eu27_transport, year):
             color_discrete_map=transport_sub_colors
         )
         st.plotly_chart(pie_freight)
+
+def get_top_fuel(fuel_str):
+    # fuel_str could be 'Liquids|Biomass' or 'Electricity'
+    return fuel_str.split('|')[0]
+
+
+def plot_transport_fuel_pie_charts(fuel_transport, selected_cat, selected_year):
+    df = fuel_transport[(fuel_transport["MainCategory"] == selected_cat) & (fuel_transport["Year"] == selected_year)].copy()
+    if df.empty:
+        st.write("No data for this selection.")
+        return
+    
+    # Top Fuel category (Electricity, Hydrogen, Liquids, Gases)
+    df['TopFuel'] = df['Fuel'].apply(lambda x: x.split('|')[0])
+    
+    # Aggregate sums by TopFuel
+    top_fuel_dist = df.groupby('TopFuel')['Value'].sum().reset_index()
+
+    cols = st.columns(3)
+    col_index = 0
+
+    # Pie chart 1: Main fuels distribution
+    fig_main = px.pie(
+        top_fuel_dist, 
+        names='TopFuel', 
+        values='Value', 
+        title=f"Fuel distribution for {selected_cat} in {selected_year}",
+        color='TopFuel',
+    )
+    cols[col_index].plotly_chart(fig_main)
+    col_index += 1
+
+    # Pie chart 2: Liquids breakdown if exists
+    if 'Liquids' in top_fuel_dist['TopFuel'].values and col_index < 3:
+        liquids_df = df[(df['TopFuel'] == 'Liquids') & (df['Fuel'].str.count('\|') >= 1)].copy()
+        # Only keep fuels with subcategory (have '|')
+        liquids_df['LiquidsType'] = liquids_df['Fuel'].apply(lambda x: x.split('|')[1])
+        liquids_dist = liquids_df.groupby('LiquidsType')['Value'].sum().reset_index()
+        fig_liquids = px.pie(
+            liquids_dist,
+            names='LiquidsType',
+            values='Value',
+            title=f"Liquids breakdown for {selected_cat} in {selected_year}",
+            color='LiquidsType'
+        )
+        cols[col_index].plotly_chart(fig_liquids)
+        col_index += 1
+
+    # Pie chart 3: Gases breakdown if exists
+    if 'Gases' in top_fuel_dist['TopFuel'].values and col_index < 3:
+        gases_df = df[(df['TopFuel'] == 'Gases') & (df['Fuel'].str.count('\|') >= 1)].copy()
+        # Only keep fuels with subcategory (have '|')
+        gases_df['GasesType'] = gases_df['Fuel'].apply(lambda x: x.split('|')[1])
+        gases_dist = gases_df.groupby('GasesType')['Value'].sum().reset_index()
+        fig_gases = px.pie(
+            gases_dist,
+            names='GasesType',
+            values='Value',
+            title=f"Gases breakdown for {selected_cat} in {selected_year}",
+            color='GasesType'
+        )
+        cols[col_index].plotly_chart(fig_gases)
+
 
 
 def plot_transport_heatmap(transport_data, target_category):
