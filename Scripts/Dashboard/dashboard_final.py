@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import os
 
 from mappings import *
 from process import *
@@ -7,10 +8,9 @@ from global_plots import *
 from transport_plots import *
 from industry_plots import *
 
-
 # Call important files
-transport_file = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\Desktop\PtX-Markets\REMIND\Results_REMIND_JRC.csv"
-industry_path = r"C:\Users\mar.eco\OneDrive - CBS - Copenhagen Business School\Desktop\PtX-Markets\Scripts\Industry\Results_per_Country"
+transport_file = os.path.join('..', '..', 'REMIND', 'Results_REMIND_JRC.csv')
+industry_path = os.path.join('..', 'Industry', 'Results_per_Country')
 
 transport_data = load_transport_data(transport_file)
 industry_df = load_industry_data(industry_path)
