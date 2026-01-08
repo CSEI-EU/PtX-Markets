@@ -234,7 +234,7 @@ def corresponding_cat(category):
         
     elif category == "FE|Transport|Pass|Rail":
         new_cat = "Passenger rail transport"
-    elif category == "FE|Transport|Pass|Rail":
+    elif category == "FE|Transport|Freight|Rail":
         new_cat = "Goods rail transport"
 
     elif category == "FE|Transport|Bunkers|Freight|International Shipping":

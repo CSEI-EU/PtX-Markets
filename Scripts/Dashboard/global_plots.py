@@ -43,7 +43,8 @@ def create_eu27_combined_plot(first_sector_df, name_first_sector, second_sector_
 
 def calculate_growth(value_start, year_start, value_end, year_end):
     change = ((value_end - value_start) / value_start) * 100
-    annual_growth = ((value_end - value_start) / (year_end - year_start)) / value_start * 100
+    # annual_growth = ((value_end - value_start) / (year_end - year_start)) / value_start * 100
+    annual_growth = ((value_end / value_start) ** (1/(year_end-year_start)) - 1) * 100
     return change, annual_growth
 
 
