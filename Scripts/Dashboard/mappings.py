@@ -213,6 +213,20 @@ transport_fuel_colors = {
 }
 
 
+ptx_fuel_colors = {
+    'Hydrogen': '#0072B2',
+    'Ammonia': '#CC79A7',
+    'Methanol': '#009E73',
+    'Synthetic Gases': '#D55E00',
+    'Synthetic Liquids': '#E69F00',
+    'Fossil Gases': '#999999',
+    'Fossil Liquids': '#56B4E9',
+    'Biogenic Gases': '#F0E442',
+    'Biogenic Liquids': "#322D2D",
+    'Biomass [Solid]': '#993300'
+}
+ptx_carriers = ['Hydrogen', 'Ammonia', 'Methanol', 'Synthetic Gases', 'Synthetic Liquids']
+fossil_carriers = ["Fossil Gases", "Fossil Liquids"]
 
 def corresponding_cat(category):
     if category == "FE|Transport|Freight|Road|Heavy":

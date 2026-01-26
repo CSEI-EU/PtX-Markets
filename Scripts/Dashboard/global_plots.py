@@ -3,6 +3,9 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 from mappings import corresponding_cat
+from mappings import ptx_fuel_colors
+from mappings import ptx_carriers
+from mappings import fossil_carriers
 from process import convert_to_alpha3
 
 '''
@@ -20,7 +23,7 @@ Functions included:
 - create_top_demanding_countries_figures: Combines transport and industry plots for top-consuming countries.
 '''
 
-def get_eu27_demand(df, country_name, sector_name):
+def get_country_demand(df, country_name, sector_name):
     df_eu27 = df[df['Country'] == country_name]
     df_grouped = df_eu27.groupby('Year')['Value'].sum().reset_index()
     df_grouped['Sector'] = sector_name
@@ -28,7 +31,7 @@ def get_eu27_demand(df, country_name, sector_name):
     return df_eu27, df_grouped
 
 
-def create_eu27_combined_plot(first_sector_df, name_first_sector, second_sector_df, name_second_sector):
+def create_country_combined_plot(first_sector_df, name_first_sector, second_sector_df, name_second_sector):
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True,subplot_titles=(name_first_sector, name_second_sector))
 
     fig.add_trace(go.Scatter(x=first_sector_df['Year'], y=first_sector_df['Value'], mode='lines', name=name_first_sector), row=1, col=1)
@@ -166,3 +169,55 @@ def create_top_demanding_countries_figures(first_sector_df, second_sector_df):
     fig_industry = plot_top_countries_over_time(industry_agg, top_industry, "Industry", color_map)
 
     return fig_transport, fig_industry
+
+
+# UPDATE JANUARY 2026 : focus more on the final PtX results 
+def plot_ptx_transition_wedge(df, country_code):
+    plot_df = df[df['Country'] == country_code].groupby(['Year', 'FuelGroup'])['Value'].sum().reset_index()
+    
+    fig = px.area(plot_df, x="Year", y="Value", color="FuelGroup",
+                  title=f"Energy demand evolution in {country_code}: Fossil vs PtX",
+                  color_discrete_map=ptx_fuel_colors,
+                  category_orders={"Year": [2030, 2040, 2050]})
+    
+    fig.update_layout(yaxis_title="Total Energy Demand (EJ)", hovermode="x unified")
+    return fig
+
+def plot_sector_ptx_intensity(df, country_code, year):
+    """Bar chart showing which sectors are the biggest PtX consumers."""
+    plot_df = df[(df['Country'] == country_code) & (df['Year'] == year)]
+    
+    fig = px.bar(plot_df, x="Sector", y="Value", color="FuelGroup",
+                 title=f"Sectoral Fuel Mix in {year} ({country_code})",
+                 color_discrete_map=ptx_fuel_colors)
+    return fig
+
+
+# Filter for the user to chose his focus on fuel
+def apply_focus_filter(df, focus):
+    df = df.copy()
+    if focus == "Power-to-X only":
+        return df[df["FuelGroup"].isin(ptx_carriers)]
+
+    elif focus == "Power-to-X only":
+        return df[df["FuelGroup"].isin(ptx_carriers)]
+
+    elif focus == "Hydrogen only":
+        return df[df["FuelGroup"] == "Hydrogen"]
+
+    elif focus == "Hydrogen vs other PtX":
+        d = df[df["FuelGroup"].isin(ptx_carriers)].copy()
+        d["FuelGroup"] = d["FuelGroup"].apply(
+            lambda x: "Hydrogen" if x == "Hydrogen" else "Other PtX"
+        )
+        return d
+
+    elif focus == "PtX vs Fossil fuels":
+        d = df[df["FuelGroup"].isin(ptx_carriers + fossil_carriers)].copy()
+        d["FuelGroup"] = d["FuelGroup"].apply(
+            lambda x: "PtX" if x in ptx_carriers else "Fossil fuels"
+        )
+        return d
+
+    else:
+        return df
