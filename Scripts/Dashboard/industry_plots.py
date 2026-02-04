@@ -32,17 +32,16 @@ def plot_main_industry_bar(eu27_industry, colors):
         labels={'value': 'Energy Demand (EJ)'},
         color_discrete_sequence=colors
     )
-    fig.update_layout(
-        barmode='stack',
-        yaxis_title='Energy Demand (EJ)',
-        legend_title='Industry Sector'
-    )
+    fig.update_layout(barmode='stack',yaxis_title='Energy Demand (EJ)',legend_title='Industry Sector')
+    fig.update_layout(legend_orientation="h", legend_y=-0.2)
     return fig
 
 
 # ---- Pie charts ----
+@st.cache_data
 def plot_industry_pie(industry_df, year):
     data_year = industry_df[industry_df['Year'] == year].copy()
+    data_year = data_year[(data_year['Category'] != "Overall Demand") &(data_year['Material'] != "Overall Demand")]
     cat_data = data_year.groupby('Category')['Value'].sum().reset_index()
     mat_data = data_year.groupby('Material')['Value'].sum().reset_index()
 
@@ -72,6 +71,7 @@ def plot_industry_pie(industry_df, year):
 
 
 # ---- Heatmap ----
+@st.cache_data
 def plot_industry_choropleth(industry_df, target_industry_category):
     filtered_industry_data = industry_df[(industry_df['Category'] == target_industry_category) & (industry_df['Country'] != 'EU27')].copy()
     filtered_industry_data['iso_alpha'] = filtered_industry_data['Country'].apply(convert_to_alpha3)

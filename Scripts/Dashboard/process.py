@@ -32,6 +32,7 @@ def load_industry_data(filepath):
 
     return pd.DataFrame(industry_data)
 
+@st.cache_data
 def process_ptx_excel(df):
     # Select sector columns
     sector_cols = [c for c in df.columns if c not in ['FuelGroup', 'Year']]

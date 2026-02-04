@@ -2,6 +2,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
+import pandas as pd
 
 from process import convert_to_alpha3
 from mappings import corresponding_cat
@@ -26,6 +27,7 @@ def plot_main_transport_stack(eu27_transport, colors):
         color_discrete_sequence=colors
     )
     fig.update_layout(barmode='stack', yaxis_title='Energy Demand (EJ)', legend_title='Transport mode')
+    fig.update_layout(legend_orientation="h", legend_y=-0.2)
     return fig
 
 
@@ -61,69 +63,6 @@ def plot_transport_pie_charts(eu27_transport, year):
             color_discrete_map=transport_sub_colors
         )
         st.plotly_chart(pie_freight)
-
-def get_top_fuel(fuel_str):
-    # fuel_str could be 'Liquids|Biomass' or 'Electricity'
-    return fuel_str.split('|')[0]
-
-
-def plot_transport_fuel_pie_charts(fuel_transport, selected_cat, selected_year):
-    df = fuel_transport[(fuel_transport["MainCategory"] == selected_cat) & (fuel_transport["Year"] == selected_year)].copy()
-    if df.empty:
-        st.write("No data for this selection.")
-        return
-    
-    # Top Fuel category (Electricity, Hydrogen, Liquids, Gases)
-    df['TopFuel'] = df['Fuel'].apply(lambda x: x.split('|')[0])
-    
-    # Aggregate sums by TopFuel
-    top_fuel_dist = df.groupby('TopFuel')['Value'].sum().reset_index()
-
-    cols = st.columns(3)
-    col_index = 0
-
-    # Pie chart 1: Main fuels distribution
-    fig_main = px.pie(
-        top_fuel_dist, 
-        names='TopFuel', 
-        values='Value', 
-        title=f"Fuel distribution for {selected_cat} in {selected_year}",
-        color='TopFuel',
-    )
-    cols[col_index].plotly_chart(fig_main)
-    col_index += 1
-
-    # Pie chart 2: Liquids breakdown if exists
-    if 'Liquids' in top_fuel_dist['TopFuel'].values and col_index < 3:
-        liquids_df = df[(df['TopFuel'] == 'Liquids') & (df['Fuel'].str.count('\|') >= 1)].copy()
-        # Only keep fuels with subcategory (have '|')
-        liquids_df['LiquidsType'] = liquids_df['Fuel'].apply(lambda x: x.split('|')[1])
-        liquids_dist = liquids_df.groupby('LiquidsType')['Value'].sum().reset_index()
-        fig_liquids = px.pie(
-            liquids_dist,
-            names='LiquidsType',
-            values='Value',
-            title=f"Liquids breakdown for {selected_cat} in {selected_year}",
-            color='LiquidsType'
-        )
-        cols[col_index].plotly_chart(fig_liquids)
-        col_index += 1
-
-    # Pie chart 3: Gases breakdown if exists
-    if 'Gases' in top_fuel_dist['TopFuel'].values and col_index < 3:
-        gases_df = df[(df['TopFuel'] == 'Gases') & (df['Fuel'].str.count('\|') >= 1)].copy()
-        # Only keep fuels with subcategory (have '|')
-        gases_df['GasesType'] = gases_df['Fuel'].apply(lambda x: x.split('|')[1])
-        gases_dist = gases_df.groupby('GasesType')['Value'].sum().reset_index()
-        fig_gases = px.pie(
-            gases_dist,
-            names='GasesType',
-            values='Value',
-            title=f"Gases breakdown for {selected_cat} in {selected_year}",
-            color='GasesType'
-        )
-        cols[col_index].plotly_chart(fig_gases)
-
 
 
 def plot_transport_heatmap(transport_data, target_category):
@@ -182,6 +121,74 @@ def plot_transport_heatmap(transport_data, target_category):
             lakecolor="lightblue", bgcolor='white',
             lataxis_range=[35, 70], lonaxis_range=[-15, 35]
         )
+    )
+
+    # To have better edges for the map 
+    # fig.update_geos(fitbounds="locations", visible=False)
+    return fig
+
+
+# ADDED JANUARY 2026: Fuel breakdown for PtX analysis 
+import plotly.express as px
+
+def plot_transport_ptx_bars(final_df, selected_country):
+    df = final_df[final_df['Country'] == selected_country].copy()
+    transport_modes = ['Pass Road', 'Pass Rail', 'Pass Aviation', 'Freight Road', 'Freight Rail', 'Maritime']
+    transport_modes = [c for c in transport_modes if c in df.columns]
+
+    # Convert numeric values
+    for col in transport_modes:
+        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
+
+    # Filter PtX fuels
+    ptx_df = df[df['FuelGroup'].isin(ptx_carriers)]
+
+    # Melt modes for plotting
+    ptx_melted = ptx_df.melt(id_vars=['Year','FuelGroup'], value_vars=transport_modes, var_name='Mode', value_name='Value')
+    ptx_melted = ptx_melted[ptx_melted['Value'] > 0]
+
+    fig = px.bar(
+        ptx_melted,
+        x='Year',
+        y='Value',
+        color='FuelGroup',
+        facet_col='Mode',
+        title=f'PtX fuels by transport mode for {selected_country}',
+        labels={'Value':'Energy Demand (EJ)'}
+    )
+    fig.update_layout(barmode='stack', height=500)
+    return fig
+
+
+def plot_transport_ptx_share_simple(final_df, selected_country):
+    df = final_df[final_df["Country"] == selected_country].copy()
+
+    # Keep only transport sector
+    df = df[df["Sector"] == "Transport"]
+
+    # Total transport demand per year
+    total = df.groupby("Year")["Value"].sum().reset_index(name="Total")
+
+    # PtX transport demand per year
+    ptx = df[df["FuelGroup"].isin(ptx_carriers)] \
+            .groupby("Year")["Value"].sum().reset_index(name="PtX")
+
+    # Merge and compute share
+    merged = pd.merge(total, ptx, on="Year", how="left").fillna(0)
+    merged["PtX Share (%)"] = merged["PtX"] / merged["Total"] * 100
+
+    fig = px.line(
+        merged,
+        x="Year",
+        y="PtX Share (%)",
+        markers=True,
+        title=f"PtX share in Transport energy demand – {selected_country}"
+    )
+
+    fig.update_layout(
+        yaxis_title="PtX Share of Transport (%)",
+        xaxis_title="Year",
+        height=400
     )
 
     return fig

@@ -11,7 +11,7 @@ title_alignment = """
 text-align: center;
 }
 </style>
-<h1 class="centered-title">Power-to-X and Energy demand Outlook</h1>
+<h1 class="centered-title">Green Fuels and Energy demand Outlook</h1>
 """
 st.markdown(title_alignment, unsafe_allow_html=True)
 
@@ -31,9 +31,7 @@ industry_df = load_industry_data(industry_path)
 final_df = load_combined_outputs(final_output_path)
 
 fuel_transport = transport_data[transport_data['Category'].isin(transport_fuel_paths)].copy()
-fuel_transport[["MainCategory", "Fuel"]] = fuel_transport["Category"].apply(
-    lambda x: pd.Series(extract_main_and_fuel(x, categories))
-)
+fuel_transport[["MainCategory", "Fuel"]] = fuel_transport["Category"].apply(lambda x: pd.Series(extract_main_and_fuel(x, categories)))
 
 transport_data['Country_full'] = transport_data['Country'].map(iso_to_country)
 transport_data = transport_data[transport_data["Category"].isin(categories)]
@@ -43,7 +41,7 @@ industry_df['Country_full'] = industry_df['Country'].map(iso_to_country)
 transport_name = 'Transport'
 industry_name = 'Industry'
 
-# Side bar with relevant choices for the dashboard user
+# -------- Side bar with relevant choices for the dashboard user --------
 with st.sidebar:
     st.title("Filters")
     all_countries = sorted(transport_data['Country'].unique())
@@ -54,18 +52,15 @@ with st.sidebar:
         default_index = all_countries.index('EU27')
     selected_country = st.selectbox("Select a country:", all_countries, index=default_index)
 
-    selected_year = st.selectbox("Select a year", [2030, 2040, 2050], index=0)
+    selected_year = st.selectbox("Select a year", [2030, 2040, 2050], index=3)
 
     focus = st.radio("What is the focus of the analysis?",
-    [
-        "All energy carriers",
-        "Power-to-X only",
-        "Hydrogen only",
-        "Hydrogen vs other PtX",
-        "PtX vs Fossil fuels"
-    ],
-    index=0
-    )
+    ["All energy carriers",
+    "Green fuels only",
+    # "Hydrogen only",
+    "Hydrogen vs other Green fuels",
+    "Green fuels vs Fossil fuels"],
+    index=0)
 
 st.markdown("""
 This dashboard explores how final energy demand evolves across Europe and how 
@@ -81,15 +76,41 @@ total = country_data[country_data['Year'] == selected_year]['Value'].sum()
 ptx = country_data[(country_data['Year'] == selected_year) & (country_data['FuelGroup'].isin(ptx_carriers))]['Value'].sum()
 penetration = (ptx / total * 100) if total > 0 else 0
 
-c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
-c2.metric(f"PtX Market size ({selected_year})", f"{ptx:.3f} EJ")
-c3.metric(f"PtX integration", f"{penetration:.1f}%")
+if focus == "Hydrogen only":
+    h2 = country_data[(country_data['Year'] == selected_year) & 
+                      (country_data['FuelGroup'] == "Hydrogen")]['Value'].sum()
+    h2_share = h2 / total * 100 if total > 0 else 0
 
-# Main Transition Chart
+    c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
+    c2.metric(f"Hydrogen demand ({selected_year})", f"{h2:.3f} EJ")
+    c3.metric("Hydrogen share of total", f"{h2_share:.1f}%")
+
+elif focus == "Hydrogen vs other PtX":
+    h2 = country_data[(country_data['Year'] == selected_year) & 
+                      (country_data['FuelGroup'] == "Hydrogen")]['Value'].sum()
+    other_ptx = country_data[(country_data['Year'] == selected_year) & 
+                             (country_data['FuelGroup'].isin([x for x in ptx_carriers if x != "Hydrogen"]))]['Value'].sum()
+    h2_share_ptx = h2 / (h2 + other_ptx) * 100 if (h2 + other_ptx) > 0 else 0
+
+    c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
+    c2.metric(f"Hydrogen in PtX ({selected_year})", f"{h2:.3f} EJ")
+    c3.metric("Hydrogen share of PtX", f"{h2_share_ptx:.1f}%")
+
+else:
+    # Default PtX KPIs
+    c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
+    c2.metric(f"PtX Market size ({selected_year})", f"{ptx:.3f} EJ")
+    c3.metric(f"PtX integration", f"{penetration:.1f}%")
+
+
+# Charts for PtX integration 
+st.subheader(f"Energy demand and fuel per sector in {selected_country}")
 filtered_master = apply_focus_filter(
     final_df[final_df['Country'] == selected_country],
     focus
 )
+
+# st.write(sorted(filtered_master["FuelGroup"].unique()))
 st.plotly_chart(plot_ptx_transition_wedge(filtered_master, selected_country),use_container_width=True)
 st.plotly_chart(plot_sector_ptx_intensity(filtered_master, selected_country, selected_year))
 
@@ -148,11 +169,10 @@ with key_num:
 st.markdown('---')
 
 
-
 # -------- Heatmaps of 2030 demand: Transport vs Industry --------
 st.subheader("Country-level energy demand by year")
 fig_maps = create_demand_heatmaps(transport_data, industry_df, selected_year)
-st.plotly_chart(fig_maps)
+st.plotly_chart(fig_maps, use_container_width=True,config= {"scrollZoom": False,"displayModeBar": False})
 
 
 # -------- Energy demand by most consuming countries --------
@@ -186,19 +206,17 @@ with tab1:
     plot_transport_pie_charts(country_transport, 2025)
     plot_transport_pie_charts(country_transport, 2050)
 
-    available_cats = sorted(fuel_transport["MainCategory"].unique())
-    # selected_cat = st.selectbox("Select transport category:", available_cats)
-    # filtered_df = fuel_transport[fuel_transport["MainCategory"] == selected_cat]
-    # st.dataframe(filtered_df)
-
-    # years = sorted(fuel_transport['Year'].unique())
-    # selected_year = st.selectbox("Select year:", years)
-    # plot_transport_fuel_pie_charts(fuel_transport, selected_cat, selected_year)
-
     # ------ Heat maps for most consuming category --------
     target_category = highest_category_info(country_transport, 2050)[0]
     fig_cat_transport = plot_transport_heatmap(transport_data, target_category)
-    st.plotly_chart(fig_cat_transport)
+    st.plotly_chart(fig_cat_transport, use_container_width = True, config= {"scrollZoom": False,"displayModeBar": False})
+
+    st.write("TEST TO SEE")
+    st.write(final_df[final_df["Country"] == selected_country][["Year","FuelGroup","Value"]].head(20))
+
+    st.subheader("Power-to-X in Transport")
+    fig_ptx_simple = plot_transport_ptx_share_simple(final_df, selected_country)
+    st.plotly_chart(fig_ptx_simple, use_container_width=True, config= {"scrollZoom": False,"displayModeBar": False})
 
 
 with tab2:
@@ -215,4 +233,4 @@ with tab2:
     # ------ Heat maps for most consuming category --------
     target_industry_category = top_industry_2050
     fig_cat_industry = plot_industry_choropleth(industry_df, target_industry_category)
-    st.plotly_chart(fig_cat_industry)
+    st.plotly_chart(fig_cat_industry, use_container_width=True,config= {"scrollZoom": False,"displayModeBar": False})

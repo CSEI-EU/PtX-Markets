@@ -1,3 +1,5 @@
+import streamlit as st 
+
 iso_to_country = {
     'AT': 'Austria', 'BE': 'Belgium', 'BG': 'Bulgaria', 'CY': 'Cyprus',
     'CZ': 'Czech Republic', 'DE': 'Germany', 'DK': 'Denmark', 'EE': 'Estonia',
@@ -133,7 +135,6 @@ transport_fuel_paths = [
     "FE|Transport|Freight|Rail|Liquids|Hydrogen",
 ]
 
-
 def extract_main_and_fuel(category_str, categories):
     # Sort categories by length descending to match longest prefix first
     categories_sorted = sorted(categories, key=len, reverse=True)
@@ -212,6 +213,15 @@ transport_fuel_colors = {
     "Other": "#e31a1c", 
 }
 
+fuel_order_full = [
+    "Fossil Gases",
+    "Fossil Liquids",
+    "Synthetic Liquids",
+    "Synthetic Gases",
+    "Methanol",
+    "Ammonia",
+    "Hydrogen"
+]
 
 ptx_fuel_colors = {
     'Hydrogen': '#0072B2',
@@ -228,6 +238,8 @@ ptx_fuel_colors = {
 ptx_carriers = ['Hydrogen', 'Ammonia', 'Methanol', 'Synthetic Gases', 'Synthetic Liquids']
 fossil_carriers = ["Fossil Gases", "Fossil Liquids"]
 
+
+@st.cache_data
 def corresponding_cat(category):
     if category == "FE|Transport|Freight|Road|Heavy":
         new_cat = "Goods road transport (Heavy)"
@@ -258,5 +270,4 @@ def corresponding_cat(category):
 
     else:
         return category
-    
     return(new_cat)
