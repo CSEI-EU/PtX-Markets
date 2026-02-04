@@ -214,29 +214,41 @@ transport_fuel_colors = {
 }
 
 fuel_order_full = [
-    "Fossil Gases",
     "Fossil Liquids",
+    "Fossil Gases",
+    "Biomass [Solid]",
+    "Biogenic Liquids",
+    "Biogenic Gases",
     "Synthetic Liquids",
     "Synthetic Gases",
     "Methanol",
     "Ammonia",
-    "Hydrogen"
+    "Hydrogen",
+    "Renewable Energy Carrier"
 ]
 
 ptx_fuel_colors = {
-    'Hydrogen': '#0072B2',
-    'Ammonia': '#CC79A7',
-    'Methanol': '#009E73',
-    'Synthetic Gases': '#D55E00',
-    'Synthetic Liquids': '#E69F00',
-    'Fossil Gases': '#999999',
-    'Fossil Liquids': '#56B4E9',
-    'Biogenic Gases': '#F0E442',
-    'Biogenic Liquids': "#322D2D",
-    'Biomass [Solid]': '#993300'
+    "Fossil Liquids": "#1a237e",
+    "Fossil Gases": "#6674be",
+    "Biomass [Solid]": "#984e43",
+    "Biogenic Liquids": "#7cb342",
+    "Biogenic Gases": "#cddc39",
+    "Synthetic Liquids": "#f9a825",
+    "Synthetic Gases": "#ef6c00",
+    "Methanol": "#009E73",
+    "Ammonia": "#ab47bc",
+    "Hydrogen": "#3fa5ff",
+    "Renewable Energy Carrier": "#5A4A82"
 }
 ptx_carriers = ['Hydrogen', 'Ammonia', 'Methanol', 'Synthetic Gases', 'Synthetic Liquids']
 fossil_carriers = ["Fossil Gases", "Fossil Liquids"]
+
+comparison_colors = {
+    "Hydrogen": "#1e88e5",
+    "Other Green fuels": "#43a047",   
+    "Green fuels": "#43a047",         
+    "Fossil fuels": "#1a237e"    
+}
 
 
 @st.cache_data

@@ -50,9 +50,9 @@ with st.sidebar:
     default_index = 0
     if 'EU27' in all_countries:
         default_index = all_countries.index('EU27')
-    selected_country = st.selectbox("Select a country:", all_countries, index=default_index)
+    selected_country = st.selectbox("Select a country:", all_countries, index=default_index, format_func=format_country_name)
 
-    selected_year = st.selectbox("Select a year", [2030, 2040, 2050], index=3)
+    selected_year = st.selectbox("Select a year", [2030, 2040, 2050], index=2)
 
     focus = st.radio("What is the focus of the analysis?",
     ["All energy carriers",
@@ -64,55 +64,50 @@ with st.sidebar:
 
 st.markdown("""
 This dashboard explores how final energy demand evolves across Europe and how 
-electricity-based fuels (Power-to-X) progressively replace fossil energy in transport and industry.
-It first provides a strategic overview of Power-to-X integration and total energy demand, and then dives into sector-specific insights for Transport and Industry.
+Green fuels progressively replace fossil energy in transport and industry.
+It first provides a strategic overview of Green fuels integration and total energy demand, and then dives into sector-specific insights for Transport and Industry.
 """)
 
-c1, c2, c3 = st.columns(3)
 country_data = final_df[final_df['Country'] == selected_country]
+eu_data = final_df[final_df['Country'] == "EU27"]
 
 # Calculate metrics for the chose year 
+total_eu = eu_data[eu_data['Year'] == selected_year]['Value'].sum()
 total = country_data[country_data['Year'] == selected_year]['Value'].sum()
 ptx = country_data[(country_data['Year'] == selected_year) & (country_data['FuelGroup'].isin(ptx_carriers))]['Value'].sum()
-penetration = (ptx / total * 100) if total > 0 else 0
+share_ptx = (ptx / total * 100) if total > 0 else 0
 
-if focus == "Hydrogen only":
-    h2 = country_data[(country_data['Year'] == selected_year) & 
-                      (country_data['FuelGroup'] == "Hydrogen")]['Value'].sum()
-    h2_share = h2 / total * 100 if total > 0 else 0
 
+if selected_country != "EU27":
+    share_country = (total / total_eu * 100) if total_eu > 0 else 0
+
+    c1, c2, c3, c4 = st.columns(4)
     c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
-    c2.metric(f"Hydrogen demand ({selected_year})", f"{h2:.3f} EJ")
-    c3.metric("Hydrogen share of total", f"{h2_share:.1f}%")
-
-elif focus == "Hydrogen vs other PtX":
-    h2 = country_data[(country_data['Year'] == selected_year) & 
-                      (country_data['FuelGroup'] == "Hydrogen")]['Value'].sum()
-    other_ptx = country_data[(country_data['Year'] == selected_year) & 
-                             (country_data['FuelGroup'].isin([x for x in ptx_carriers if x != "Hydrogen"]))]['Value'].sum()
-    h2_share_ptx = h2 / (h2 + other_ptx) * 100 if (h2 + other_ptx) > 0 else 0
-
-    c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
-    c2.metric(f"Hydrogen in PtX ({selected_year})", f"{h2:.3f} EJ")
-    c3.metric("Hydrogen share of PtX", f"{h2_share_ptx:.1f}%")
-
+    c2.metric(f"Share in EU27 Total demand", f"{share_country:.2f}%")
+    c3.metric(f"Green fuels Demand ({selected_year})", f"{ptx:.3f} EJ")
+    c4.metric(f"Green fuels market share", f"{share_ptx:.1f}%")
 else:
     # Default PtX KPIs
+    c1, c2, c3 = st.columns(3)
     c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
-    c2.metric(f"PtX Market size ({selected_year})", f"{ptx:.3f} EJ")
-    c3.metric(f"PtX integration", f"{penetration:.1f}%")
+    c2.metric(f"Green fuels Demand ({selected_year})", f"{ptx:.3f} EJ")
+    c3.metric(f"Green fuels market share", f"{share_ptx:.1f}%")
 
 
-# Charts for PtX integration 
+# Apply focus from the side bar to plot fuel type maps
 st.subheader(f"Energy demand and fuel per sector in {selected_country}")
 filtered_master = apply_focus_filter(
     final_df[final_df['Country'] == selected_country],
     focus
 )
 
-# st.write(sorted(filtered_master["FuelGroup"].unique()))
-st.plotly_chart(plot_ptx_transition_wedge(filtered_master, selected_country),use_container_width=True)
-st.plotly_chart(plot_sector_ptx_intensity(filtered_master, selected_country, selected_year))
+if focus in ["Hydrogen vs other Green fuels", "Green fuels vs Fossil fuels"]:
+    color_map = comparison_colors
+else:
+    color_map = ptx_fuel_colors
+
+st.plotly_chart(plot_ptx_transition_wedge(filtered_master, selected_country, color_map),use_container_width=True)
+st.plotly_chart(plot_sector_ptx_intensity(filtered_master, selected_country, selected_year, color_map))
 
 # European aggregate 
 eu_avg = final_df.groupby(["Year","FuelGroup"])["Value"].sum().reset_index()

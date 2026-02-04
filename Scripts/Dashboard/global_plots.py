@@ -167,24 +167,33 @@ def create_top_demanding_countries_figures(first_sector_df, second_sector_df):
 
 
 # UPDATE JANUARY 2026 : focus more on the final PtX results 
-def plot_ptx_transition_wedge(df, country_code):
+def plot_ptx_transition_wedge(df, country_code, color_map):
     plot_df = df[df['Country'] == country_code].groupby(['Year', 'FuelGroup'])['Value'].sum().reset_index()
     
     fig = px.area(plot_df, x="Year", y="Value", color="FuelGroup",
-                  color_discrete_map=ptx_fuel_colors,
-                  category_orders={"FuelGroup": fuel_order_full,"Year": [2030, 2040, 2050]})
-    
-    fig.update_layout(yaxis_title="Total Energy Demand (EJ)", hovermode="x unified")
+                  color_discrete_map=color_map,
+                  category_orders={"FuelGroup": fuel_order_full,"Year": [2030, 2040, 2050]},
+                  labels={"Value": "Demand (EJ)", "FuelGroup": "Fuel type"})
+
+    fig.update_traces(hovertemplate="Demand: %{y:.3f} EJ<extra></extra>")
+    fig.update_layout(yaxis_title="Total Energy Demand (EJ)", hovermode="x unified", legend_title_text=" ")
     return fig
 
-def plot_sector_ptx_intensity(df, country_code, year):
+
+def plot_sector_ptx_intensity(df, country_code, year, color_map):
     """Bar chart showing which sectors are the biggest PtX consumers."""
     plot_df = df[(df['Country'] == country_code) & (df['Year'] == year)]
+
+    st.write("Unique sectors in plot_df:", plot_df["Sector"].unique())
     
     fig = px.bar(plot_df, x="Sector", y="Value", color="FuelGroup",
                  title=f"Sectoral Fuel Mix in {year} ({country_code})",
-                 color_discrete_map=ptx_fuel_colors,
-                 category_orders={"FuelGroup": fuel_order_full})
+                 color_discrete_map=color_map,
+                 category_orders={"FuelGroup": fuel_order_full}, 
+                 labels={"Value": "Demand (EJ)", "FuelGroup": "Fuel type"})
+
+    fig.update_traces(hovertemplate="Demand: %{y:.3f} EJ<extra></extra>")
+    fig.update_layout(yaxis_title="Energy Demand (EJ)", hovermode="x unified", legend_title_text=" ")
     return fig
 
 

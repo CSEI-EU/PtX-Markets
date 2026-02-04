@@ -2,6 +2,17 @@ import os
 import pandas as pd
 import pycountry
 import streamlit as st 
+from mappings import iso_to_country
+
+@st.cache_data
+def format_country_name(code):
+    if code != "EU27":
+        name = iso_to_country.get(code, code) 
+    else:
+        name = "European Union"
+        
+    return f"{name} ({code})" 
+
 
 @st.cache_data
 def load_transport_data(filepath):
