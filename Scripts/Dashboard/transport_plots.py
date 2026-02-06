@@ -65,6 +65,7 @@ def plot_transport_pie_charts(eu27_transport, year):
         st.plotly_chart(pie_freight)
 
 
+@st.cache_data
 def plot_transport_heatmap(transport_data, target_category):
     title_cat = corresponding_cat(target_category) 
     df = transport_data[
@@ -94,9 +95,13 @@ def plot_transport_heatmap(transport_data, target_category):
             zmin=0,
             zmax=zmax,
             colorbar=dict(
-                title="Energy Demand (EJ)" if i == 1 else None,
+                title="Demand (EJ)" if i == 1 else None,
                 titlefont=dict(size=18),
-                tickfont=dict(size=16)
+                tickfont=dict(size=16),
+                len=0.45,
+                thickness=12,
+                x=0.999,
+                y=0.5
             ),
             showscale=(i == 1),
             geo=f'geo{i+1}'
@@ -104,13 +109,20 @@ def plot_transport_heatmap(transport_data, target_category):
 
         fig.add_trace(choropleth, row=1, col=i+1)
 
+    # Fix the legend for years 
+    for ann in fig.layout.annotations:
+        ann.y = 0.75
+        ann.font.size = 18
+
     fig.update_layout(
         title_text=f"{title_cat} demand in 2020 vs 2050",
         title_font=dict(size=26, family="Arial", color="black"),
-        title_x=0.4,
+        title_x=0.5,
+        title_y=0.75,
+        title_xanchor="center",
+        margin=dict(l=20, r=20, t=90, b=10),
         height=1000,
         width=1400,
-        margin=dict(l=20, r=20, t=50, b=10),
         geo=dict(
             scope='europe', showland=True, landcolor="white",
             lakecolor="lightblue", bgcolor='white',
@@ -122,15 +134,12 @@ def plot_transport_heatmap(transport_data, target_category):
             lataxis_range=[35, 70], lonaxis_range=[-15, 35]
         )
     )
-
-    # To have better edges for the map 
-    # fig.update_geos(fitbounds="locations", visible=False)
     return fig
 
 
-# ADDED JANUARY 2026: Fuel breakdown for PtX analysis 
+# ADDED JANUARY 2026: Fuel breakdown for PtX analysis
+''' 
 import plotly.express as px
-
 def plot_transport_ptx_bars(final_df, selected_country):
     df = final_df[final_df['Country'] == selected_country].copy()
     transport_modes = ['Pass Road', 'Pass Rail', 'Pass Aviation', 'Freight Road', 'Freight Rail', 'Maritime']
@@ -159,36 +168,4 @@ def plot_transport_ptx_bars(final_df, selected_country):
     fig.update_layout(barmode='stack', height=500)
     return fig
 
-
-def plot_transport_ptx_share_simple(final_df, selected_country):
-    df = final_df[final_df["Country"] == selected_country].copy()
-
-    # Keep only transport sector
-    df = df[df["Sector"] == "Transport"]
-
-    # Total transport demand per year
-    total = df.groupby("Year")["Value"].sum().reset_index(name="Total")
-
-    # PtX transport demand per year
-    ptx = df[df["FuelGroup"].isin(ptx_carriers)] \
-            .groupby("Year")["Value"].sum().reset_index(name="PtX")
-
-    # Merge and compute share
-    merged = pd.merge(total, ptx, on="Year", how="left").fillna(0)
-    merged["PtX Share (%)"] = merged["PtX"] / merged["Total"] * 100
-
-    fig = px.line(
-        merged,
-        x="Year",
-        y="PtX Share (%)",
-        markers=True,
-        title=f"PtX share in Transport energy demand – {selected_country}"
-    )
-
-    fig.update_layout(
-        yaxis_title="PtX Share of Transport (%)",
-        xaxis_title="Year",
-        height=400
-    )
-
-    return fig
+'''

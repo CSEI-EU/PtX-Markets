@@ -206,12 +206,10 @@ with tab1:
     fig_cat_transport = plot_transport_heatmap(transport_data, target_category)
     st.plotly_chart(fig_cat_transport, use_container_width = True, config= {"scrollZoom": False,"displayModeBar": False})
 
+
+    # Debug 
     st.write("TEST TO SEE")
     st.write(final_df[final_df["Country"] == selected_country][["Year","FuelGroup","Value"]].head(20))
-
-    st.subheader("Power-to-X in Transport")
-    fig_ptx_simple = plot_transport_ptx_share_simple(final_df, selected_country)
-    st.plotly_chart(fig_ptx_simple, use_container_width=True, config= {"scrollZoom": False,"displayModeBar": False})
 
 
 with tab2:

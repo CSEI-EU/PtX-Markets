@@ -87,10 +87,13 @@ def create_demand_heatmaps(first_sector_df, second_sector_df, selected_year):
         zmin=0,
         zmax=transport_zmax,
         colorbar=dict(
-            title="Energy demand (EJ)",
+            title="Demand (EJ)",
             titlefont=dict(size=14),
             tickfont=dict(size=12),
-            x=0.43
+            len=0.55,          # makes the bar shorter
+            thickness=12,    
+            x=0.47,          
+            y=0.5          
         ),
         showscale=True,
         geo='geo1'
@@ -102,7 +105,12 @@ def create_demand_heatmaps(first_sector_df, second_sector_df, selected_year):
         colorscale="Reds",
         zmin=0,
         zmax=industry_zmax,
-        colorbar=dict(title="Energy demand (EJ)"),
+        colorbar=dict(
+            title="Demand (EJ)", 
+            len=0.55,
+            thickness=12,
+            x=0.999,
+            y=0.5),
         showscale=True,
         geo='geo2'
     ), row=1, col=2)
@@ -114,6 +122,11 @@ def create_demand_heatmaps(first_sector_df, second_sector_df, selected_year):
         geo2=dict(scope='europe', showland=True, landcolor="white", lataxis_range=[35, 70], lonaxis_range=[-15, 35]),
         margin=dict(t=50, l=20, r=20, b=10)
     )
+
+    # Fix the legend for years 
+    for ann in fig_maps.layout.annotations:
+        ann.y = 0.85
+        ann.font.size = 18
 
     return fig_maps
 
@@ -184,8 +197,6 @@ def plot_sector_ptx_intensity(df, country_code, year, color_map):
     """Bar chart showing which sectors are the biggest PtX consumers."""
     plot_df = df[(df['Country'] == country_code) & (df['Year'] == year)]
 
-    st.write("Unique sectors in plot_df:", plot_df["Sector"].unique())
-    
     fig = px.bar(plot_df, x="Sector", y="Value", color="FuelGroup",
                  title=f"Sectoral Fuel Mix in {year} ({country_code})",
                  color_discrete_map=color_map,

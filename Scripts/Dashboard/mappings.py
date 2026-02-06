@@ -240,7 +240,7 @@ ptx_fuel_colors = {
     "Hydrogen": "#3fa5ff",
     "Renewable Energy Carrier": "#5A4A82"
 }
-ptx_carriers = ['Hydrogen', 'Ammonia', 'Methanol', 'Synthetic Gases', 'Synthetic Liquids']
+ptx_carriers = ['Hydrogen', 'Ammonia', 'Methanol', 'Synthetic Gases', 'Synthetic Liquids', "Biogenic Gases", "Biogenic Liquids", "Biomass [Solid]",]
 fossil_carriers = ["Fossil Gases", "Fossil Liquids"]
 
 comparison_colors = {

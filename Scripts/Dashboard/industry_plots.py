@@ -95,9 +95,13 @@ def plot_industry_choropleth(industry_df, target_industry_category):
             z=demand_by_country['Value'],
             colorscale="RdBu_r",
             colorbar=dict(
-                title="Energy demand (EJ)" if i == 1 else None,
+                title="Demand (EJ)" if i == 1 else None,
                 titlefont=dict(size=18),
-                tickfont=dict(size=16)
+                tickfont=dict(size=16), 
+                len=0.45,
+                thickness=12,
+                x=0.999,
+                y=0.5
             ),
             zmin=color_range[0],
             zmax=color_range[1],
@@ -107,13 +111,21 @@ def plot_industry_choropleth(industry_df, target_industry_category):
 
         fig_cat_industry.add_trace(choropleth, row=1, col=i+1)
 
+    # Fix the legend for years 
+    for ann in fig_cat_industry.layout.annotations:
+        ann.y = 0.75
+        ann.font.size = 18
+
+
     fig_cat_industry.update_layout(
         title_text=f"{target_industry_category} demand in 2030 vs 2050",
         title_font=dict(size=26, family="Arial", color="black"),
-        title_x=0.4,
+        title_x=0.5,
+        title_y = 0.75,
+        title_xanchor="center",
         height=1000,
         width=1400,
-        margin=dict(l=20, r=20, t=50, b=10),
+        margin=dict(l=20, r=20, t=90, b=10),
         geo=dict(
             scope='europe',
             showland=True, landcolor="white",
