@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Green Fuels Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@0.85.1/build/stlite.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@0.85.1/build/stlite.js";
+      mount({
+        requirements: ["pandas", "plotly", "pycountry", "openpyxl"],
+        entrypoint: "dashboard_final.py",
+        files: {
+          // DATA FILES (Stlite creates the folders itself)
+          "REMIND/Results_REMIND_JRC.csv": { 
+            url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/REMIND/Results_REMIND_JRC.csv" 
+          },
+          // IMPORTANT: have to list all files needed in the industry folder 
+          "Industry/Results_per_Country/2030_DK.xlsx": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/Scripts/Industry/Results_per_Country/2030_DK.xlsx" }, 
+          "Industry/Results_per_Country/2040_DK.xlsx": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/Scripts/Industry/Results_per_Country/2040_DK.xlsx" }, 
+          "Industry/Results_per_Country/2050_DK.xlsx": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/Scripts/Industry/Results_per_Country/2050_DK.xlsx" }, 
+
+          "Outputs/PtX_demand_DK.xlsx": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/Outputs/PtX_demand_DK.xlsx" }, 
+
+          "dashboard_final.py": `
+import streamlit as st
+import pandas as pd
+import os
+
+# -------- Initiate the dashboard with title and graphs --------
+st.set_page_config(layout='wide')
+
+title_alignment = """
+<style>
+.centered-title {
+text-align: center;
+}
+</style>
+<h1 class="centered-title">Green Fuels and Energy demand Outlook</h1>
+"""
+st.markdown(title_alignment, unsafe_allow_html=True)
+
+from mappings import *
+from process import *
+from global_plots import * 
+from transport_plots import *
+from industry_plots import *
+
+# Call important files
+transport_file = "REMIND/Results_REMIND_JRC.csv"
+industry_path = "Industry/Results_per_Country"
+final_output_path = "Outputs"
+
+transport_data = load_transport_data(transport_file)
+industry_df = load_industry_data(industry_path)
+final_df = load_combined_outputs(final_output_path)
+
+fuel_transport = transport_data[transport_data['Category'].isin(transport_fuel_paths)].copy()
+fuel_transport[["MainCategory", "Fuel"]] = fuel_transport["Category"].apply(lambda x: pd.Series(extract_main_and_fuel(x, categories)))
+
+transport_data['Country_full'] = transport_data['Country'].map(iso_to_country)
+transport_data = transport_data[transport_data["Category"].isin(categories)]
+transport_data["MainCategory"] = transport_data["Category"]
+
+industry_df['Country_full'] = industry_df['Country'].map(iso_to_country)
+transport_name = 'Transport'
+industry_name = 'Industry'
+
+# -------- Side bar with relevant choices for the dashboard user --------
+with st.sidebar:
+    st.title("Filters")
+    all_countries = sorted(transport_data['Country'].unique())
+
+    # Set the default country to be EU27
+    default_index = 0
+    if 'EU27' in all_countries:
+        default_index = all_countries.index('EU27')
+    selected_country = st.selectbox("Select a country:", all_countries, index=default_index, format_func=format_country_name)
+
+    selected_year = st.selectbox("Select a year", [2030, 2040, 2050], index=2)
+
+    focus = st.radio("What is the focus of the analysis?",
+    ["All energy carriers",
+    "Green fuels only",
+    # "Hydrogen only",
+    "Hydrogen vs other Green fuels",
+    "Green fuels vs Fossil fuels"],
+    index=0)
+
+st.markdown("""
+This dashboard explores how final energy demand evolves across Europe and how 
+Green fuels progressively replace fossil energy in transport and industry.
+It first provides a strategic overview of Green fuels integration and total energy demand, and then dives into sector-specific insights for Transport and Industry.
+""")
+
+country_data = final_df[final_df['Country'] == selected_country]
+eu_data = final_df[final_df['Country'] == "EU27"]
+
+# Calculate metrics for the chose year 
+total_eu = eu_data[eu_data['Year'] == selected_year]['Value'].sum()
+total = country_data[country_data['Year'] == selected_year]['Value'].sum()
+ptx = country_data[(country_data['Year'] == selected_year) & (country_data['FuelGroup'].isin(ptx_carriers))]['Value'].sum()
+share_ptx = (ptx / total * 100) if total > 0 else 0
+
+
+if selected_country != "EU27":
+    share_country = (total / total_eu * 100) if total_eu > 0 else 0
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
+    c2.metric(f"Share in EU27 Total demand", f"{share_country:.2f}%")
+    c3.metric(f"Green fuels Demand ({selected_year})", f"{ptx:.3f} EJ")
+    c4.metric(f"Green fuels market share", f"{share_ptx:.1f}%")
+else:
+    # Default PtX KPIs
+    c1, c2, c3 = st.columns(3)
+    c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
+    c2.metric(f"Green fuels Demand ({selected_year})", f"{ptx:.3f} EJ")
+    c3.metric(f"Green fuels market share", f"{share_ptx:.1f}%")
+
+
+# Apply focus from the side bar to plot fuel type maps
+st.subheader(f"Energy demand and fuel per sector in {selected_country}")
+filtered_master = apply_focus_filter(
+    final_df[final_df['Country'] == selected_country],
+    focus
+)
+
+if focus in ["Hydrogen vs other Green fuels", "Green fuels vs Fossil fuels"]:
+    color_map = comparison_colors
+else:
+    color_map = ptx_fuel_colors
+
+st.plotly_chart(plot_ptx_transition_wedge(filtered_master, selected_country, color_map),use_container_width=True)
+st.plotly_chart(plot_sector_ptx_intensity(filtered_master, selected_country, selected_year, color_map))
+
+# European aggregate 
+eu_avg = final_df.groupby(["Year","FuelGroup"])["Value"].sum().reset_index()
+eu_avg["Country"] = "EU27"
+
+# -------- EU27 Global energy demand and key numbers --------
+st.subheader(f"{selected_country} Global energy demand")
+
+# Get EU27 data
+country_transport, country_transport_demand = get_country_demand(transport_data, selected_country, transport_name)
+country_industry, country_industry_demand = get_country_demand(industry_df, selected_country,industry_name)
+combined_demand = pd.concat([country_transport_demand, country_industry_demand], ignore_index=True)
+
+# Plot of both sectors
+fig_combined = create_country_combined_plot(country_transport_demand, transport_name, country_industry_demand, industry_name)
+
+# Key metrics
+t_2025 = country_transport_demand[country_transport_demand['Year'] == 2025]['Value'].values[0]
+t_2050 = country_transport_demand[country_transport_demand['Year'] == 2050]['Value'].values[0]
+t_change, t_growth = calculate_growth(t_2025, 2025, t_2050, 2050)
+
+i_2030 = country_industry_demand[country_industry_demand['Year'] == 2030]['Value'].values[0]
+i_2050 = country_industry_demand[country_industry_demand['Year'] == 2050]['Value'].values[0]
+i_change, i_growth = calculate_growth(i_2030, 2030, i_2050, 2050)
+
+# Most demanding categories 
+top_transport_2025 = highest_category_info(country_transport, 2025)[1]
+top_transport_2050 = highest_category_info(country_transport, 2050)[1]
+top_industry_2030 = highest_category_info(country_industry, 2030)[1]
+top_industry_2050 = highest_category_info(country_industry, 2050)[1]
+
+graph_eu27, key_num = st.columns((6, 4))
+with graph_eu27:
+    st.plotly_chart(fig_combined, use_container_width=True)
+
+# Second column: Key numbers for global demand
+with key_num:
+    st.subheader(transport_name)
+    st.metric("2050 demand", f"{t_2050:.2f} EJ", delta=f"{t_change:.1f} % vs 2025")
+    st.info(f"""
+            Average annual growth rate: {t_growth:.1f} % \\
+            Top category in 2025: **{top_transport_2025}** \\
+            Top category in 2050: **{top_transport_2050}**
+            """)
+    st.markdown('---')
+
+    st.subheader(industry_name)
+    st.metric("2050 demand", f"{i_2050:.4f} EJ", delta=f"{i_change:.1f} % vs 2030")
+    st.info(f"""
+            Average annual growth rate: {i_growth:.1f} % \\
+            Top category in 2030: **{top_industry_2030}** \\
+            Top category in 2050: **{top_industry_2050}**
+            """) 
+st.markdown('---')
+
+# Color sclaes for pie charts
+custom_blues = ['#08306b', '#2171b5', '#6baed6', '#c6dbef', '#deebf7', '#b3cde3', '#a6bddb', '#9ebcda', '#8c96c6']
+custom_reds = ['#67000d', '#cb181d', "#f55c2d"]
+
+# -------- Heatmaps of 2030 demand: Transport vs Industry --------
+st.subheader("Country-level energy demand by year")
+fig_maps = create_demand_heatmaps(transport_data, industry_df, selected_year)
+st.plotly_chart(fig_maps, use_container_width=True,config= {"scrollZoom": False,"displayModeBar": False})
+
+# ---- Organize dashboard using TABS ----
+tab1, tab2 = st.tabs(["Transport", "Industry"])
+
+with tab1:
+    st.subheader("Evolution of categories - Transport")
+
+    # ----- Bar plot for main categories -----
+    fig_main_transport = plot_main_transport_stack(country_transport, custom_blues)
+    st.plotly_chart(fig_main_transport)
+
+    # ----- Pie chars for categories -----
+    plot_transport_pie_charts(country_transport, 2025)
+    plot_transport_pie_charts(country_transport, 2050)
+
+    # ------ Heat maps for most consuming category --------
+    target_category = highest_category_info(country_transport, 2050)[0]
+    fig_cat_transport = plot_transport_heatmap(transport_data, target_category)
+    st.plotly_chart(fig_cat_transport, use_container_width = True, config= {"scrollZoom": False,"displayModeBar": False})
+
+
+    # Debug 
+    # st.write("TEST TO SEE")
+    # st.write(final_df[final_df["Country"] == selected_country][["Year","FuelGroup","Value"]].head(20))
+
+
+with tab2:
+    st.subheader("Evolution of categories - Industry")
+
+    # ----- Bar plot for main categories -----
+    fig_main_industry = plot_main_industry_bar(country_industry, custom_reds)
+    st.plotly_chart(fig_main_industry)
+
+    # ----- Pie chars for categories -----
+    plot_industry_pie(industry_df, 2030)
+    plot_industry_pie(industry_df, 2050)
+
+    # ------ Heat maps for most consuming category --------
+    target_industry_category = top_industry_2050
+    fig_cat_industry = plot_industry_choropleth(industry_df, target_industry_category)
+    st.plotly_chart(fig_cat_industry, use_container_width=True,config= {"scrollZoom": False,"displayModeBar": False})
+`
+
+,
+          "mappings.py": `
+import streamlit as st 
+
+iso_to_country = {
+    'AT': 'Austria', 'BE': 'Belgium', 'BG': 'Bulgaria', 'CY': 'Cyprus',
+    'CZ': 'Czech Republic', 'DE': 'Germany', 'DK': 'Denmark', 'EE': 'Estonia',
+    'EL': 'Greece', 'ES': 'Spain', 'FI': 'Finland', 'FR': 'France',
+    'HR': 'Croatia', 'HU': 'Hungary', 'IE': 'Ireland', 'IT': 'Italy',
+    'LT': 'Lithuania', 'LU': 'Luxembourg', 'LV': 'Latvia', 'MT': 'Malta',
+    'NL': 'Netherlands', 'PL': 'Poland', 'PT': 'Portugal', 'RO': 'Romania',
+    'SE': 'Sweden', 'SI': 'Slovenia', 'SK': 'Slovakia'
+}
+
+categories = [
+    "FE|Transport|Freight|Road|Heavy",
+    "FE|Transport|Freight|Road|Light",
+    "FE|Transport|Pass|Road|Bus",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers",
+    "FE|Transport|Pass|Domestic Aviation",
+    "FE|Transport|Pass|Aviation",
+    "FE|Transport|Pass|Rail",
+    "FE|Transport|Freight|Rail",
+    "FE|Transport|Bunkers|Freight|International Shipping",
+    "FE|Transport|Freight|Domestic Shipping"               
+]
+
+main_category_mapping = {
+    "FE|Transport|Freight|Road|Heavy": "Road",
+    "FE|Transport|Freight|Road|Light": "Road",
+    "FE|Transport|Pass|Road|Bus": "Road",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers": "Road",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers": "Road",
+    "FE|Transport|Pass|Domestic Aviation": "Aviation",
+    "FE|Transport|Pass|Aviation": "Aviation",
+    "FE|Transport|Pass|Rail": "Rail",
+    "FE|Transport|Freight|Rail": "Rail",
+    "FE|Transport|Bunkers|Freight|International Shipping": "Shipping",
+    "FE|Transport|Freight|Domestic Shipping": "Shipping"
+}
+
+transport_fuel_paths = [
+    # Freight Road Heavy
+    "FE|Transport|Freight|Road|Heavy|Electricity",
+    "FE|Transport|Freight|Road|Heavy|Hydrogen",
+    "FE|Transport|Freight|Road|Heavy|Gases",
+    "FE|Transport|Freight|Road|Heavy|Gases|Biomass",
+    "FE|Transport|Freight|Road|Heavy|Gases|Fossil",
+    "FE|Transport|Freight|Road|Heavy|Gases|Hydrogen",
+    "FE|Transport|Freight|Road|Heavy|Liquids",
+    "FE|Transport|Freight|Road|Heavy|Liquids|Biomass",
+    "FE|Transport|Freight|Road|Heavy|Liquids|Fossil",
+    "FE|Transport|Freight|Road|Heavy|Liquids|Hydrogen",
+
+    # Freight Road Light
+    "FE|Transport|Freight|Road|Light|Electricity",
+    "FE|Transport|Freight|Road|Light|Hydrogen",
+    "FE|Transport|Freight|Road|Light|Gases",
+    "FE|Transport|Freight|Road|Light|Gases|Biomass",
+    "FE|Transport|Freight|Road|Light|Gases|Fossil",
+    "FE|Transport|Freight|Road|Light|Gases|Hydrogen",
+    "FE|Transport|Freight|Road|Light|Liquids",
+    "FE|Transport|Freight|Road|Light|Liquids|Biomass",
+    "FE|Transport|Freight|Road|Light|Liquids|Fossil",
+    "FE|Transport|Freight|Road|Light|Liquids|Hydrogen",
+
+    # Passenger Road Bus
+    "FE|Transport|Pass|Road|Bus|Electricity",
+    "FE|Transport|Pass|Road|Bus|Hydrogen",
+    "FE|Transport|Pass|Road|Bus|Gases",
+    "FE|Transport|Pass|Road|Bus|Gases|Biomass",
+    "FE|Transport|Pass|Road|Bus|Gases|Fossil",
+    "FE|Transport|Pass|Road|Bus|Gases|Hydrogen",
+    "FE|Transport|Pass|Road|Bus|Liquids",
+    "FE|Transport|Pass|Road|Bus|Liquids|Biomass",
+    "FE|Transport|Pass|Road|Bus|Liquids|Fossil",
+    "FE|Transport|Pass|Road|Bus|Liquids|Hydrogen",
+
+    # Passenger Road LDV Four Wheelers
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Electricity",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Hydrogen",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Gases",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Gases|Biomass",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Gases|Fossil",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Gases|Hydrogen",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Liquids",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Liquids|Biomass",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Liquids|Fossil",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers|Liquids|Hydrogen",
+
+    # Passenger Road LDV Two Wheelers
+    "FE|Transport|Pass|Road|LDV|Two Wheelers|Electricity",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers|Liquids",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers|Liquids|Biomass",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers|Liquids|Fossil",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers|Liquids|Hydrogen",
+
+    # Bunkers Freight International Shipping
+    "FE|Transport|Bunkers|Freight|International Shipping|Liquids",
+
+    # Freight Domestic Shipping
+    "FE|Transport|Freight|Domestic Shipping|Liquids",
+    "FE|Transport|Freight|Domestic Shipping|Liquids|Biomass",
+    "FE|Transport|Freight|Domestic Shipping|Liquids|Fossil",
+    "FE|Transport|Freight|Domestic Shipping|Liquids|Hydrogen",
+
+    # Bunkers Pass International Aviation
+    "FE|Transport|Bunkers|Pass|International Aviation|Liquids",
+
+    # Passenger Domestic Aviation
+    "FE|Transport|Pass|Domestic Aviation|Hydrogen",
+    "FE|Transport|Pass|Domestic Aviation|Liquids",
+    "FE|Transport|Pass|Domestic Aviation|Liquids|Biomass",
+    "FE|Transport|Pass|Domestic Aviation|Liquids|Fossil",
+    "FE|Transport|Pass|Domestic Aviation|Liquids|Hydrogen",
+
+    # Passenger Aviation
+    "FE|Transport|Pass|Aviation|Hydrogen",
+    "FE|Transport|Pass|Aviation|Liquids",
+    "FE|Transport|Pass|Aviation|Liquids|Biomass",
+    "FE|Transport|Pass|Aviation|Liquids|Fossil",
+    "FE|Transport|Pass|Aviation|Liquids|Hydrogen",
+
+    # Passenger Rail
+    "FE|Transport|Pass|Rail|Hydrogen",
+    "FE|Transport|Pass|Rail|Liquids",
+    "FE|Transport|Pass|Rail|Liquids|Biomass",
+    "FE|Transport|Pass|Rail|Liquids|Fossil",
+    "FE|Transport|Pass|Rail|Liquids|Hydrogen",
+
+    # Freight Rail
+    "FE|Transport|Freight|Rail|Hydrogen",
+    "FE|Transport|Freight|Rail|Liquids", 
+    "FE|Transport|Freight|Rail|Liquids|Biomass",
+    "FE|Transport|Freight|Rail|Liquids|Fossil",
+    "FE|Transport|Freight|Rail|Liquids|Hydrogen",
+]
+
+def extract_main_and_fuel(category_str, categories):
+    # Sort categories by length descending to match longest prefix first
+    categories_sorted = sorted(categories, key=len, reverse=True)
+    
+    for cat_prefix in categories_sorted:
+        if category_str.startswith(cat_prefix):
+            # Fuel is whatever comes after the prefix (skip the '|')
+            remainder = category_str[len(cat_prefix):]
+            if remainder.startswith("|"):
+                remainder = remainder[1:]  # remove leading '|'
+            return cat_prefix, remainder
+    # If no prefix matched, return None and full string as fuel
+    return None, category_str
+
+
+transport_main_colors = {
+    "Road": "#e41a1c",      
+    "Aviation": "#377eb8",  
+    "Rail": "#4daf4a",       
+    "Shipping": "#984ea3"    
+}
+
+industry_category_colors = {
+    "Iron & Steel": "#e41a1c",
+    "Chemicals": "#377eb8",
+    "Non-metallic minerals": "#4daf4a"
+}
+
+sub_category_mapping = {
+    "FE|Transport|Freight|Road|Heavy": "Freight: Road (Heavy)",
+    "FE|Transport|Freight|Road|Light": "Freight: Road (Light)",
+    "FE|Transport|Freight|Rail": "Freight: Rail",
+    "FE|Transport|Pass|Road|Bus": "Passenger: Road (Bus)",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers": "Passenger: Road (4W)",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers": "Passenger: Road (2W)",
+    "FE|Transport|Pass|Rail": "Passenger: Rail",
+    "FE|Transport|Pass|Aviation": "Passenger: Aviation (International)",
+    "FE|Transport|Pass|Domestic Aviation": "Passenger: Aviation (Domestic)",
+    "FE|Transport|Bunkers|Freight|International Shipping": "Freight: Shipping (International)",
+    "FE|Transport|Freight|Domestic Shipping": "Freight: Shipping (Domestic)"
+}
+
+transport_sub_colors = {
+    # Freight
+    "Freight: Road (Heavy)": "#c95155",     
+    "Freight: Road (Light)": "#dd878b",       
+    "Freight: Rail": "#88a0a8",               
+    "Freight: Shipping (International)": "#a3937f", 
+    "Freight: Shipping (Domestic)": "#c2b280",       
+
+    # Passenger
+    "Passenger: Road (Bus)": "#729ece",     
+    "Passenger: Road (4W)": "#91bfdb",      
+    "Passenger: Road (2W)": "#a6d96a",       
+    "Passenger: Rail": "#4575b4",            
+    "Passenger: Aviation (International)": "#b8a9c9", 
+    "Passenger: Aviation (Domestic)": "#8073ac"      
+}
+
+industry_fuel_colors = {
+    "Ammonia": "#e41a1c",
+    "Biomass": "#fb9a99",
+    "Methanol": "#a6cee3",
+    "Hydrogen": "#fdbf6f",
+    "Biogas": "#ff7f00",
+    "Overall demand": "#b2df8a",
+    "Other": "#1f78b4"
+}
+
+
+transport_fuel_colors = {
+    "Electricity": "#a6cee3",
+    "Hydrogen": "#fdbf6f",
+    "Gases": "#fb9a99",
+    "Liquids": "#1f78b4",
+    "Other": "#e31a1c", 
+}
+
+fuel_order_full = [
+    "Fossil Liquids",
+    "Fossil Gases",
+    "Biomass [Solid]",
+    "Biogenic Liquids",
+    "Biogenic Gases",
+    "Synthetic Liquids",
+    "Synthetic Gases",
+    "Methanol",
+    "Ammonia",
+    "Hydrogen",
+    "Renewable Energy Carrier"
+]
+
+ptx_fuel_colors = {
+    "Fossil Liquids": "#1a237e",
+    "Fossil Gases": "#6674be",
+    "Biomass [Solid]": "#984e43",
+    "Biogenic Liquids": "#7cb342",
+    "Biogenic Gases": "#cddc39",
+    "Synthetic Liquids": "#f9a825",
+    "Synthetic Gases": "#ef6c00",
+    "Methanol": "#009E73",
+    "Ammonia": "#ab47bc",
+    "Hydrogen": "#3fa5ff",
+    "Renewable Energy Carrier": "#5A4A82"
+}
+ptx_carriers = ['Hydrogen', 'Ammonia', 'Methanol', 'Synthetic Gases', 'Synthetic Liquids', "Biogenic Gases", "Biogenic Liquids", "Biomass [Solid]",]
+fossil_carriers = ["Fossil Gases", "Fossil Liquids"]
+
+comparison_colors = {
+    "Hydrogen": "#1e88e5",
+    "Other Green fuels": "#43a047",   
+    "Green fuels": "#43a047",         
+    "Fossil fuels": "#1a237e"    
+}
+
+
+@st.cache_data
+def corresponding_cat(category):
+    if category == "FE|Transport|Freight|Road|Heavy":
+        new_cat = "Goods road transport (Heavy)"
+    elif category == "FE|Transport|Freight|Road|Light":
+        new_cat = "Goods road transport (Light)"
+        
+    elif category == "FE|Transport|Pass|Road|Bus":
+            new_cat = "Passenger car (Bus)"
+    elif category == "FE|Transport|Pass|Road|LDV|Four Wheelers":
+        new_cat = "Passenger car (Four wheelers)"
+    elif category == "FE|Transport|Pass|Road|LDV|Two Wheelers":
+        new_cat = "Passenger car (Two wheelers)"
+        
+    elif category == "FE|Transport|Pass|Domestic Aviation":
+        new_cat = "Domestic Aviation"
+    elif category == "FE|Transport|Pass|Aviation":
+        new_cat = "Aviation"
+        
+    elif category == "FE|Transport|Pass|Rail":
+        new_cat = "Passenger rail transport"
+    elif category == "FE|Transport|Freight|Rail":
+        new_cat = "Goods rail transport"
+
+    elif category == "FE|Transport|Bunkers|Freight|International Shipping":
+        new_cat = "International Shipping"
+    elif category == "FE|Transport|Freight|Domestic Shipping":
+        new_cat = "Domestic Shipping"
+
+    else:
+        return category
+    return(new_cat)
+`,
+          "process.py": `
+import os 
+import pandas as pd
+import pycountry
+import streamlit as st 
+from mappings import iso_to_country
+
+@st.cache_data
+def format_country_name(code):
+    if code != "EU27":
+        name = iso_to_country.get(code, code) 
+    else:
+        name = "European Union"
+        
+    return f"{name} ({code})" 
+
+
+@st.cache_data
+def load_transport_data(filepath):
+    df = pd.read_csv(filepath)
+    df['Year'] = df['Year'].astype(int)
+    return df
+
+@st.cache_data
+def load_industry_data(filepath):
+    industry_data = []
+    industry_files = [f for f in os.listdir(filepath) if f.endswith(".xlsx")]
+
+    for file_name in industry_files:
+        year, country = file_name.replace(".xlsx", "").split("_")
+        file_path = os.path.join(filepath, file_name)
+        df = pd.read_excel(file_path, index_col=0)
+        df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
+
+        for material in df.index:
+            for sector in df.columns:
+                industry_data.append({
+                    "Year": int(year),
+                    "Country": country,
+                    "Category": sector,
+                    "Material": material.strip(),
+                    "Value": df.loc[material, sector] * 3.6 * 0.000001 # Convert to EJ 
+                })
+
+    return pd.DataFrame(industry_data)
+
+@st.cache_data
+def process_ptx_excel(df):
+    # Select sector columns
+    sector_cols = [c for c in df.columns if c not in ['FuelGroup', 'Year']]
+    
+    # Create a long dataframe
+    df_long = df.melt(id_vars=['FuelGroup', 'Year'], 
+                      value_vars=sector_cols, 
+                      var_name='Sector', 
+                      value_name='Demand_EJ')
+
+    # Use streamlite sum instead of the Overall Demand row 
+    df_long = df_long[df_long['FuelGroup'] != 'Overall Demand']
+    df_long['Demand_EJ'] = pd.to_numeric(df_long['Demand_EJ'], errors='coerce').fillna(0)
+    return df_long
+
+
+# Load all excel files from Outputs into one Dataframe
+@st.cache_data
+def load_combined_outputs(folder_path):
+    all_data = []
+    if not os.path.exists(folder_path):
+        return pd.DataFrame()
+        
+    files = [f for f in os.listdir(folder_path) if f.endswith(('.xlsx', '.csv'))]
+    for file in files:
+        # Extract country code (e.g., DE, FR, EU27) from 'PtX_demand_DE.xlsx'
+        country_code = file.split('_')[-1].split('.')[0]
+        file_path = os.path.join(folder_path, file)
+        df = pd.read_csv(file_path) if file.endswith('.csv') else pd.read_excel(file_path)
+        
+        # Identify sector columns
+        sector_cols = [c for c in df.columns if c not in ['FuelGroup', 'Year']]
+        
+        # Transform wide to long format
+        df_long = df.melt(id_vars=['FuelGroup', 'Year'], 
+                          value_vars=sector_cols, 
+                          var_name='Sector', 
+                          value_name='Value')
+        
+        # Remove pre-calculated subtotals to prevent double counting in plots
+        df_long = df_long[df_long['FuelGroup'] != 'Overall Demand']
+        df_long['Country'] = country_code
+        all_data.append(df_long)
+        
+    return pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
+
+
+
+def convert_to_alpha3(iso2):
+    try:
+        return pycountry.countries.get(alpha_2=iso2).alpha_3
+    except:
+        return None
+`,
+          "global_plots.py": `
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+import plotly.express as px
+import streamlit as st
+from mappings import *
+from process import convert_to_alpha3
+
+def get_country_demand(df, country_name, sector_name):
+    df_eu27 = df[df['Country'] == country_name]
+    df_grouped = df_eu27.groupby('Year')['Value'].sum().reset_index()
+    df_grouped['Sector'] = sector_name
+    return df_eu27, df_grouped
+
+
+def create_country_combined_plot(first_sector_df, name_first_sector, second_sector_df, name_second_sector):
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,subplot_titles=(name_first_sector, name_second_sector))
+
+    fig.add_trace(go.Scatter(x=first_sector_df['Year'], y=first_sector_df['Value'], mode='lines', name=name_first_sector), row=1, col=1)
+    fig.add_trace(go.Scatter(x=second_sector_df['Year'], y=second_sector_df['Value'], mode='lines', name=name_second_sector), row=2, col=1)
+
+    fig.update_yaxes(title_text="Energy demand (EJ)", row=1, col=1)
+    fig.update_yaxes(title_text="Energy demand (EJ)", row=2, col=1)
+    fig.update_layout(height=600, width=800, showlegend=False)
+
+    return fig
+
+
+def calculate_growth(value_start, year_start, value_end, year_end):
+    change = ((value_end - value_start) / value_start) * 100
+    annual_growth = ((value_end / value_start) ** (1/(year_end-year_start)) - 1) * 100
+    return change, annual_growth
+
+
+def highest_category_info(data, year):
+    top_cat_key = data[data['Year'] == year].groupby('Category')['Value'].sum().idxmax()
+    return top_cat_key, corresponding_cat(top_cat_key)
+
+
+@st.cache_data
+def create_demand_heatmaps(first_sector_df, second_sector_df, selected_year):
+    # Filter out EU27 and target year
+    transport = first_sector_df[(first_sector_df['Year'] == selected_year) & (first_sector_df['Country'] != 'EU27')]
+    industry = second_sector_df[(second_sector_df['Year'] == selected_year) & (second_sector_df['Country'] != 'EU27')]
+
+    # Add ISO alpha-3 codes
+    transport['iso_alpha'] = transport['Country'].apply(convert_to_alpha3)
+    industry['iso_alpha'] = industry['Country'].apply(convert_to_alpha3)
+
+    # Group by country
+    t_map_data = transport.groupby('iso_alpha')['Value'].sum().reset_index()
+    i_map_data = industry.groupby('iso_alpha')['Value'].sum().reset_index()
+
+    transport_zmax = (first_sector_df[first_sector_df['Country'] != 'EU27'].groupby(['Year', 'Country'])['Value'].sum()).max()
+    industry_zmax = (second_sector_df[second_sector_df['Country'] != 'EU27'].groupby(['Year', 'Country'])['Value'].sum()).max()
+
+    # Create figure with 2 maps
+    fig_maps = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=[
+            f"Transport Demand ({selected_year})",
+            f"Industry Demand ({selected_year})"
+        ],
+        specs=[[{"type": "choropleth"}, {"type": "choropleth"}]],
+        horizontal_spacing=0.05
+    )
+
+    fig_maps.add_trace(go.Choropleth(
+        locations=t_map_data['iso_alpha'],
+        z=t_map_data['Value'],
+        colorscale="Reds",
+        zmin=0,
+        zmax=transport_zmax,
+        colorbar=dict(
+            title="Demand (EJ)",
+            titlefont=dict(size=14),
+            tickfont=dict(size=12),
+            len=0.55,          # makes the bar shorter
+            thickness=12,    
+            x=0.47,          
+            y=0.5          
+        ),
+        showscale=True,
+        geo='geo1'
+    ), row=1, col=1)
+
+    fig_maps.add_trace(go.Choropleth(
+        locations=i_map_data['iso_alpha'],
+        z=i_map_data['Value'],
+        colorscale="Reds",
+        zmin=0,
+        zmax=industry_zmax,
+        colorbar=dict(
+            title="Demand (EJ)", 
+            len=0.55,
+            thickness=12,
+            x=0.999,
+            y=0.5),
+        showscale=True,
+        geo='geo2'
+    ), row=1, col=2)
+
+    fig_maps.update_layout(
+        height=800,
+        width=1400,
+        geo=dict(scope='europe', showland=True, landcolor="white", lataxis_range=[35, 70], lonaxis_range=[-15, 35]),
+        geo2=dict(scope='europe', showland=True, landcolor="white", lataxis_range=[35, 70], lonaxis_range=[-15, 35]),
+        margin=dict(t=50, l=20, r=20, b=10)
+    )
+
+    # Fix the legend for years 
+    for ann in fig_maps.layout.annotations:
+        ann.y = 0.85
+        ann.font.size = 18
+
+    return fig_maps
+
+
+def aggregate_country_demand(df, sector_name):
+    # Drop EU27 and aggregate
+    df = df[df['Country'] != 'EU27']
+    agg_df = df.groupby(['Country', 'Year'], as_index=False)['Value'].sum()
+
+    # Filter the most consuming countries
+    top_countries = agg_df.groupby('Country')['Value'].sum().nlargest(5).index.tolist()
+    filtered = agg_df[agg_df['Country'].isin(top_countries)]
+    
+    return filtered, top_countries
+
+
+def plot_top_countries_over_time(filtered_df, top_countries, title, color_map):
+    fig = go.Figure()
+    for country in top_countries:
+        country_df = filtered_df[filtered_df['Country'] == country]
+        fig.add_trace(go.Scatter(
+            x=country_df['Year'],
+            y=country_df['Value'],
+            mode='lines',
+            name=country,
+            line=dict(color=color_map[country])
+        ))
+    fig.update_layout(
+        title=title,
+        yaxis_title="Energy demand (EJ)",
+        height=500,
+        width=600
+    )
+    return fig
+
+
+def create_top_demanding_countries_figures(first_sector_df, second_sector_df):
+    # Aggregate data and get top 5 countries
+    transport_agg, top_transport = aggregate_country_demand(first_sector_df, 'Transport')
+    industry_agg, top_industry = aggregate_country_demand(second_sector_df, 'Industry')
+
+    # Combine all unique countries and assign colors
+    combined_countries = list(set(top_transport + top_industry))
+    colors = px.colors.qualitative.Safe
+    color_map = {country: colors[i % len(colors)] for i, country in enumerate(combined_countries)}
+
+    fig_transport = plot_top_countries_over_time(transport_agg, top_transport, "Transport", color_map)
+    fig_industry = plot_top_countries_over_time(industry_agg, top_industry, "Industry", color_map)
+
+    return fig_transport, fig_industry
+
+
+# UPDATE JANUARY 2026 : focus more on the final PtX results 
+def plot_ptx_transition_wedge(df, country_code, color_map):
+    plot_df = df[df['Country'] == country_code].groupby(['Year', 'FuelGroup'])['Value'].sum().reset_index()
+    
+    fig = px.area(plot_df, x="Year", y="Value", color="FuelGroup",
+                  color_discrete_map=color_map,
+                  category_orders={"FuelGroup": fuel_order_full,"Year": [2030, 2040, 2050]},
+                  labels={"Value": "Demand (EJ)", "FuelGroup": "Fuel type"})
+
+    fig.update_traces(hovertemplate="Demand: %{y:.3f} EJ<extra></extra>")
+    fig.update_layout(yaxis_title="Total Energy Demand (EJ)", hovermode="x unified", legend_title_text=" ")
+    return fig
+
+
+def plot_sector_ptx_intensity(df, country_code, year, color_map):
+    """Bar chart showing which sectors are the biggest PtX consumers."""
+    plot_df = df[(df['Country'] == country_code) & (df['Year'] == year)]
+
+    fig = px.bar(plot_df, x="Sector", y="Value", color="FuelGroup",
+                 title=f"Sectoral Fuel Mix in {year} ({country_code})",
+                 color_discrete_map=color_map,
+                 category_orders={"FuelGroup": fuel_order_full}, 
+                 labels={"Value": "Demand (EJ)", "FuelGroup": "Fuel type"})
+
+    fig.update_traces(hovertemplate="Demand: %{y:.3f} EJ<extra></extra>")
+    fig.update_layout(yaxis_title="Energy Demand (EJ)", hovermode="x unified", legend_title_text=" ")
+    return fig
+
+
+# Filter for the user to chose his focus on fuel
+def apply_focus_filter(df, focus):
+    df = df.copy()
+    if focus == "Green fuels only":
+        return df[df["FuelGroup"].isin(ptx_carriers)]
+
+    # elif focus == "Hydrogen only":
+    #     return df[df["FuelGroup"] == "Hydrogen"]
+
+    elif focus == "Hydrogen vs other Green fuels":
+        d = df[df["FuelGroup"].isin(ptx_carriers)].copy()
+        d["FuelGroup"] = d["FuelGroup"].apply(
+            lambda x: "Hydrogen" if x == "Hydrogen" else "Other Green fuels"
+        )
+        return d
+
+    elif focus == "Green fuels vs Fossil fuels":
+        d = df[df["FuelGroup"].isin(ptx_carriers + fossil_carriers)].copy()
+        d["FuelGroup"] = d["FuelGroup"].apply(
+            lambda x: "Green fuels" if x in ptx_carriers else "Fossil fuels"
+        )
+        return d
+
+    else:
+        return df
+
+`,
+          "transport_plots.py": `
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import streamlit as st
+import pandas as pd
+
+from process import convert_to_alpha3
+from mappings import corresponding_cat
+from mappings import *
+
+
+def plot_main_transport_stack(eu27_transport, colors):
+    df = eu27_transport.copy()
+    df['MainCategory'] = df['Category'].map(main_category_mapping)
+    main_grouped = df.groupby(['Year', 'MainCategory'])['Value'].sum().reset_index()
+    pivot_main = main_grouped.pivot(index='Year', columns='MainCategory', values='Value').fillna(0)
+
+    main_categories = ['Road', 'Aviation', 'Rail', 'Shipping']
+    available_main = [cat for cat in main_categories if cat in pivot_main.columns]
+    colors = colors[:len(available_main)]
+
+    fig = px.bar(
+        pivot_main,
+        x=pivot_main.index,
+        y=available_main,
+        labels={'value': 'Energy Demand (EJ)'},
+        color_discrete_sequence=colors
+    )
+    fig.update_layout(barmode='stack', yaxis_title='Energy Demand (EJ)', legend_title='Transport mode')
+    fig.update_layout(legend_orientation="h", legend_y=-0.2)
+    return fig
+
+
+def plot_transport_pie_charts(eu27_transport, year):
+    df = eu27_transport.copy()
+    df['SubCategory'] = df['Category'].map(sub_category_mapping)
+    sub_data = df.groupby(['Year', 'SubCategory'])['Value'].sum().reset_index()
+    year_data = sub_data[sub_data['Year'] == year]
+    
+    passenger = year_data[year_data['SubCategory'].str.contains('Passenger')]
+    freight = year_data[year_data['SubCategory'].str.contains('Freight')]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        pie_pass = px.pie(
+            passenger,
+            names='SubCategory',
+            values='Value',
+            title=f"Passenger Transport Breakdown ({year})",
+            color='SubCategory',
+            color_discrete_map=transport_sub_colors
+        )
+        st.plotly_chart(pie_pass)
+
+    with col2:
+        pie_freight = px.pie(
+            freight,
+            names='SubCategory',
+            values='Value',
+            title=f"Freight Transport Breakdown ({year})",
+            color='SubCategory',
+            color_discrete_map=transport_sub_colors
+        )
+        st.plotly_chart(pie_freight)
+
+
+@st.cache_data
+def plot_transport_heatmap(transport_data, target_category):
+    title_cat = corresponding_cat(target_category) 
+    df = transport_data[
+        (transport_data['Category'] == target_category) &
+        (transport_data['Country'] != 'EU27')
+    ].copy()
+
+    df['iso_alpha'] = df['Country'].apply(convert_to_alpha3)
+    years = [2020, 2050]
+    zmax = df['Value'].max()
+
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=[f"{year}" for year in years],
+        specs=[[{"type": "choropleth"}, {"type": "choropleth"}]],
+        horizontal_spacing=0.05
+    )
+
+    for i, year in enumerate(years):
+        year_df = df[df['Year'] == year]
+        country_values = year_df.groupby('iso_alpha')['Value'].sum().reset_index()
+
+        choropleth = go.Choropleth(
+            locations=country_values['iso_alpha'],
+            z=country_values['Value'],
+            colorscale="RdBu_r",
+            zmin=0,
+            zmax=zmax,
+            colorbar=dict(
+                title="Demand (EJ)" if i == 1 else None,
+                titlefont=dict(size=18),
+                tickfont=dict(size=16),
+                len=0.45,
+                thickness=12,
+                x=0.999,
+                y=0.5
+            ),
+            showscale=(i == 1),
+            geo=f'geo{i+1}'
+        )
+
+        fig.add_trace(choropleth, row=1, col=i+1)
+
+    # Fix the legend for years 
+    for ann in fig.layout.annotations:
+        ann.y = 0.75
+        ann.font.size = 18
+
+    fig.update_layout(
+        title_text=f"{title_cat} demand in 2020 vs 2050",
+        title_font=dict(size=26, family="Arial", color="black"),
+        title_x=0.5,
+        title_y=0.75,
+        title_xanchor="center",
+        margin=dict(l=20, r=20, t=90, b=10),
+        height=1000,
+        width=1400,
+        geo=dict(
+            scope='europe', showland=True, landcolor="white",
+            lakecolor="lightblue", bgcolor='white',
+            lataxis_range=[35, 70], lonaxis_range=[-15, 35]
+        ),
+        geo2=dict(
+            scope='europe', showland=True, landcolor="white",
+            lakecolor="lightblue", bgcolor='white',
+            lataxis_range=[35, 70], lonaxis_range=[-15, 35]
+        )
+    )
+    return fig
+`,
+          "industry_plots.py": `
+import pandas as pd
+import plotly.express as px
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+
+from process import convert_to_alpha3
+from mappings import corresponding_cat
+from mappings import *
+import streamlit as st
+
+'''
+This module gives visualization functions specifically focused on energy demand in the 
+industry sector across EU27 countries and individual nations. These functions are intended to be used with a Streamlit dashboard to illustrate interactive exploration of sectoral 
+and material-based energy use.
+
+Functions included:
+- plot_main_industry_bar: Creates a stacked bar chart showing the evolution of industry demand by category over time.
+- plot_industry_pie: Displays two side-by-side pie charts showing the breakdown of energy demand by industry category and by fuel/material for a selected year.
+- plot_industry_choropleth: Generates choropleth maps for a specific industry category to compare geographic distribution of demand in 2030 and 2050.
+'''
+
+
+# ---- Bar plots ----
+def plot_main_industry_bar(eu27_industry, colors):
+    industry_grouped = eu27_industry.groupby(['Year', 'Category'])['Value'].sum().reset_index()
+    pivot_industry = industry_grouped.pivot(index='Year', columns='Category', values='Value').fillna(0)
+
+    fig = px.bar(
+        pivot_industry,
+        x=pivot_industry.index,
+        y=pivot_industry.columns.tolist(),
+        labels={'value': 'Energy Demand (EJ)'},
+        color_discrete_sequence=colors
+    )
+    fig.update_layout(barmode='stack',yaxis_title='Energy Demand (EJ)',legend_title='Industry Sector')
+    fig.update_layout(legend_orientation="h", legend_y=-0.2)
+    return fig
+
+
+# ---- Pie charts ----
+@st.cache_data
+def plot_industry_pie(industry_df, year):
+    data_year = industry_df[industry_df['Year'] == year].copy()
+    data_year = data_year[(data_year['Category'] != "Overall Demand") &(data_year['Material'] != "Overall Demand")]
+    cat_data = data_year.groupby('Category')['Value'].sum().reset_index()
+    mat_data = data_year.groupby('Material')['Value'].sum().reset_index()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fig_cat = px.pie(
+            cat_data,
+            names='Category',
+            values='Value',
+            title=f"Industry Categories ({year})",
+            color='Category',
+            color_discrete_map=industry_category_colors
+        )
+        st.plotly_chart(fig_cat)
+
+    with col2:
+        fig_mat = px.pie(
+            mat_data,
+            names='Material',
+            values='Value',
+            title=f"Industry Fuel/Material Use ({year})",
+            color='Material',
+            color_discrete_map=industry_fuel_colors
+        )
+        st.plotly_chart(fig_mat)
+
+
+# ---- Heatmap ----
+@st.cache_data
+def plot_industry_choropleth(industry_df, target_industry_category):
+    filtered_industry_data = industry_df[(industry_df['Category'] == target_industry_category) & (industry_df['Country'] != 'EU27')].copy()
+    filtered_industry_data['iso_alpha'] = filtered_industry_data['Country'].apply(convert_to_alpha3)
+
+    years_to_plot = [2030, 2050]
+    color_range = [0, filtered_industry_data['Value'].max()]
+
+    fig_cat_industry = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=[f"{year}" for year in years_to_plot],
+        specs=[[{"type": "choropleth"}, {"type": "choropleth"}]],
+        horizontal_spacing=0.05
+    )
+
+    for i, year in enumerate(years_to_plot):
+        year_data = filtered_industry_data[filtered_industry_data['Year'] == year]
+        demand_by_country = year_data.groupby('iso_alpha')['Value'].sum().reset_index()
+
+        choropleth = go.Choropleth(
+            locations=demand_by_country['iso_alpha'],
+            z=demand_by_country['Value'],
+            colorscale="RdBu_r",
+            colorbar=dict(
+                title="Demand (EJ)" if i == 1 else None,
+                titlefont=dict(size=18),
+                tickfont=dict(size=16), 
+                len=0.45,
+                thickness=12,
+                x=0.999,
+                y=0.5
+            ),
+            zmin=color_range[0],
+            zmax=color_range[1],
+            showscale=(i == 1),
+            geo=f'geo{i+1}'
+        )
+
+        fig_cat_industry.add_trace(choropleth, row=1, col=i+1)
+
+    # Fix the legend for years 
+    for ann in fig_cat_industry.layout.annotations:
+        ann.y = 0.75
+        ann.font.size = 18
+
+
+    fig_cat_industry.update_layout(
+        title_text=f"{target_industry_category} demand in 2030 vs 2050",
+        title_font=dict(size=26, family="Arial", color="black"),
+        title_x=0.5,
+        title_y = 0.75,
+        title_xanchor="center",
+        height=1000,
+        width=1400,
+        margin=dict(l=20, r=20, t=90, b=10),
+        geo=dict(
+            scope='europe',
+            showland=True, landcolor="white",
+            lakecolor="lightblue", bgcolor='white',
+            lataxis_range=[35, 70],
+            lonaxis_range=[-15, 35]
+        ),
+        geo2=dict(
+            scope='europe',
+            showland=True, landcolor="white",
+            lakecolor="lightblue", bgcolor='white',
+            lataxis_range=[35, 70],
+            lonaxis_range=[-15, 35]
+        )
+    )
+
+    return fig_cat_industry
+`
+        },
+      }, document.getElementById("root"));
+    </script>
+  </body>
+</html>

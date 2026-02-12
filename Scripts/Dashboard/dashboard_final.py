@@ -163,29 +163,14 @@ with key_num:
             """) 
 st.markdown('---')
 
+# Color sclaes for pie charts
+custom_blues = ['#08306b', '#2171b5', '#6baed6', '#c6dbef', '#deebf7', '#b3cde3', '#a6bddb', '#9ebcda', '#8c96c6']
+custom_reds = ['#67000d', '#cb181d', "#f55c2d"]
 
 # -------- Heatmaps of 2030 demand: Transport vs Industry --------
 st.subheader("Country-level energy demand by year")
 fig_maps = create_demand_heatmaps(transport_data, industry_df, selected_year)
 st.plotly_chart(fig_maps, use_container_width=True,config= {"scrollZoom": False,"displayModeBar": False})
-
-
-# -------- Energy demand by most consuming countries --------
-st.subheader("Most energy-demanding countries over time")
-
-fig_transport, fig_industry = create_top_demanding_countries_figures(transport_data, industry_df)
-
-col1, col2 = st.columns(2)
-with col1:
-    st.plotly_chart(fig_transport)
-with col2:
-    st.plotly_chart(fig_industry)
-
-
-# Color sclaes for pie charts
-custom_blues = ['#08306b', '#2171b5', '#6baed6', '#c6dbef', '#deebf7', '#b3cde3', '#a6bddb', '#9ebcda', '#8c96c6']
-custom_reds = ['#67000d', '#cb181d', "#f55c2d"]
-
 
 # ---- Organize dashboard using TABS ----
 tab1, tab2 = st.tabs(["Transport", "Industry"])
@@ -208,8 +193,8 @@ with tab1:
 
 
     # Debug 
-    st.write("TEST TO SEE")
-    st.write(final_df[final_df["Country"] == selected_country][["Year","FuelGroup","Value"]].head(20))
+    # st.write("TEST TO SEE")
+    # st.write(final_df[final_df["Country"] == selected_country][["Year","FuelGroup","Value"]].head(20))
 
 
 with tab2:
@@ -227,3 +212,15 @@ with tab2:
     target_industry_category = top_industry_2050
     fig_cat_industry = plot_industry_choropleth(industry_df, target_industry_category)
     st.plotly_chart(fig_cat_industry, use_container_width=True,config= {"scrollZoom": False,"displayModeBar": False})
+
+
+# -------- Energy demand by most consuming countries --------
+st.subheader("Most energy-demanding countries over time")
+
+fig_transport, fig_industry = create_top_demanding_countries_figures(transport_data, industry_df)
+
+col1, col2 = st.columns(2)
+with col1:
+    st.plotly_chart(fig_transport)
+with col2:
+    st.plotly_chart(fig_industry)
