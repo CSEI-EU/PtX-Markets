@@ -17,14 +17,14 @@
         files: {
           // DATA FILES (Stlite creates the folders itself)
           "REMIND/Results_REMIND_JRC.csv": { 
-            url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/refs/heads/main/REMIND/Results_REMIND_JRC.csv?token=GHSAT0AAAAAADVMBUCIXBSJH37AAFO7KFLE2MN4ZOQ" 
+            url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/REMIND/Results_REMIND_JRC.csv" 
           },
           // IMPORTANT: have to list all files needed in the industry folder 
-          "Industry/Results_per_Country/2030_DK.xlsx": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/Scripts/Industry/Results_per_Country/2030_DK.xlsx" }, 
-          "Industry/Results_per_Country/2040_DK.xlsx": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/Scripts/Industry/Results_per_Country/2040_DK.xlsx" }, 
-          "Industry/Results_per_Country/2050_DK.xlsx": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/Scripts/Industry/Results_per_Country/2050_DK.xlsx" }, 
+          "Industry/Results_per_Country/2030_DK.csv": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/Scripts/Industry/Results_per_Country/2030_DK.csv" }, 
+          "Industry/Results_per_Country/2040_DK.csv": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/refs/heads/main/Scripts/Industry/Results_per_Country/2040_DK.csv?token=GHSAT0AAAAAADVMBUCICLKE5T2YH3BFROC22MN54AA" }, 
+          "Industry/Results_per_Country/2050_DK.csv": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/refs/heads/main/Scripts/Industry/Results_per_Country/2050_DK.csv?token=GHSAT0AAAAAADVMBUCIQQBOEKOBDLS4BOXU2MN54PQ" }, 
 
-          "Outputs/PtX_demand_DK.xlsx": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/blob/main/Outputs/PtX_demand_DK.xlsx" }, 
+          "Outputs/PtX_demand_DK.csv": { url: "https://raw.githubusercontent.com/CSEI-EU/PtX-Markets/main/Outputs/PtX_demand_DK.csv" }, 
 
           "dashboard_final.py": `
 import streamlit as st
@@ -551,18 +551,19 @@ def format_country_name(code):
 @st.cache_data
 def load_transport_data(filepath):
     df = pd.read_csv(filepath)
+    st.write("Loaded transport CSV columns:", list(df.columns))
     df['Year'] = df['Year'].astype(int)
     return df
 
 @st.cache_data
 def load_industry_data(filepath):
     industry_data = []
-    industry_files = [f for f in os.listdir(filepath) if f.endswith(".xlsx")]
+    industry_files = [f for f in os.listdir(filepath) if f.endswith(".csv")]
 
     for file_name in industry_files:
-        year, country = file_name.replace(".xlsx", "").split("_")
+        year, country = file_name.replace(".csv", "").split("_")
         file_path = os.path.join(filepath, file_name)
-        df = pd.read_excel(file_path, index_col=0)
+        df = pd.read_csv(file_path, index_col=0)
         df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
 
         for material in df.index:
@@ -601,7 +602,7 @@ def load_combined_outputs(folder_path):
     if not os.path.exists(folder_path):
         return pd.DataFrame()
         
-    files = [f for f in os.listdir(folder_path) if f.endswith(('.xlsx', '.csv'))]
+    files = [f for f in os.listdir(folder_path) if f.endswith(('.csv', '.csv'))]
     for file in files:
         # Extract country code (e.g., DE, FR, EU27) from 'PtX_demand_DE.xlsx'
         country_code = file.split('_')[-1].split('.')[0]
