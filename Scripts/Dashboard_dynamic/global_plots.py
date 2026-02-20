@@ -87,8 +87,10 @@ def create_demand_heatmaps(first_sector_df, second_sector_df, selected_year):
         zmin=0,
         zmax=transport_zmax,
         colorbar=dict(
-            title="Demand (EJ)",
-            titlefont=dict(size=14),
+            title=dict(
+                text="Demand (EJ)",
+                font=dict(size=14)
+                ),
             tickfont=dict(size=12),
             len=0.55,          # makes the bar shorter
             thickness=12,    

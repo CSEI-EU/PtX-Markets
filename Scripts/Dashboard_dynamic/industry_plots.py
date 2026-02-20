@@ -95,8 +95,10 @@ def plot_industry_choropleth(industry_df, target_industry_category):
             z=demand_by_country['Value'],
             colorscale="RdBu_r",
             colorbar=dict(
-                title="Demand (EJ)" if i == 1 else None,
-                titlefont=dict(size=18),
+                title=dict(
+                text="Demand (EJ)" if i == 1 else "",
+                font=dict(size=18)
+                ),
                 tickfont=dict(size=16), 
                 len=0.45,
                 thickness=12,

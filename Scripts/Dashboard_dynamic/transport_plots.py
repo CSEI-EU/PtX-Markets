@@ -95,8 +95,10 @@ def plot_transport_heatmap(transport_data, target_category):
             zmin=0,
             zmax=zmax,
             colorbar=dict(
-                title="Demand (EJ)" if i == 1 else None,
-                titlefont=dict(size=18),
+                title=dict(
+                text="Demand (EJ)" if i == 1 else None,
+                font=dict(size=18)
+                ),
                 tickfont=dict(size=16),
                 len=0.45,
                 thickness=12,
