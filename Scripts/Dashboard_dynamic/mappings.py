@@ -1,4 +1,62 @@
-import streamlit as st 
+'''
+This file contains functions and mappings for clear definitions of categories and use of consistent colors.
+
+Functions included: 
+- extract_main_and_fuel: Gets the category and fuel from REMIND categories definition.
+- corresponding_cat: Matches the REMIND categories with JRC ones by names.
+
+Mappings: 
+1. Clear categories and definitions
+- iso_to_country: Maps alpha-2 country code to entire country name.
+- categories: Main REMIND transport categories.
+- main_category_mapping: Maps the above categories to global Road, Rail, Shipping and Aviation.
+- transport_fuel_paths: Gives complete list of fuels per REMIND transport categories. 
+- sub_category_mapping: Maps the sub-categories for Transport with specification (eg. Heavy or Light Road)
+- fuel_order_full: Specifies order for energy carriers plots.
+- ptx_carriers: Defines energy carriers considered as green.
+- fossil_carriers: Defines energy carriers considered as fossil.
+
+2. Colors specifications
+- transport_sub_colors: Maps above sub-categories to colors for plots.
+- industry_category_colors: Maps main Industry categories to specific colors.
+- industry_fuel_colors: Maps industry fuels to specific colors.
+- transport_fuel_colors: Maps transport fuels to specific colors.
+- ptx_fuel_colors: Maps global energy carriers to speicific colors.
+- comparison_colors: Defines colors for comparison plots.
+'''
+
+
+def extract_main_and_fuel(category_str, categories):
+    # Sort categories by length descending to match longest prefix first
+    categories_sorted = sorted(categories, key=len, reverse=True)
+    
+    for cat_prefix in categories_sorted:
+        if category_str.startswith(cat_prefix):
+            remainder = category_str[len(cat_prefix):]
+            if remainder.startswith("|"):
+                remainder = remainder[1:]  # remove leading '|'
+            return cat_prefix, remainder
+        
+    # If no prefix matched, return None and full string as fuel
+    return None, category_str
+
+
+corresponding_categories = {
+    "FE|Transport|Freight|Road|Heavy": "Goods road transport (Heavy)",
+    "FE|Transport|Freight|Road|Light": "Goods road transport (Light)",
+    "FE|Transport|Pass|Road|Bus": "Passenger car (Bus)",
+    "FE|Transport|Pass|Road|LDV|Four Wheelers": "Passenger car (Four wheelers)",
+    "FE|Transport|Pass|Road|LDV|Two Wheelers": "Passenger car (Two wheelers)",
+    "FE|Transport|Pass|Domestic Aviation": "Domestic Aviation",
+    "FE|Transport|Pass|Aviation": "Aviation",
+    "FE|Transport|Pass|Rail": "Passenger rail transport",
+    "FE|Transport|Freight|Rail": "Goods rail transport",
+    "FE|Transport|Bunkers|Freight|International Shipping": "International Shipping",
+    "FE|Transport|Freight|Domestic Shipping": "Domestic Shipping",
+}
+def corresponding_cat(category):
+    return corresponding_categories.get(category, category)
+
 
 iso_to_country = {
     'AT': 'Austria', 'BE': 'Belgium', 'BG': 'Bulgaria', 'CY': 'Cyprus',
@@ -9,55 +67,6 @@ iso_to_country = {
     'NL': 'Netherlands', 'PL': 'Poland', 'PT': 'Portugal', 'RO': 'Romania',
     'SE': 'Sweden', 'SI': 'Slovenia', 'SK': 'Slovakia'
 }
-
-def extract_main_and_fuel(category_str, categories):
-    # Sort categories by length descending to match longest prefix first
-    categories_sorted = sorted(categories, key=len, reverse=True)
-    
-    for cat_prefix in categories_sorted:
-        if category_str.startswith(cat_prefix):
-            # Fuel is whatever comes after the prefix (skip the '|')
-            remainder = category_str[len(cat_prefix):]
-            if remainder.startswith("|"):
-                remainder = remainder[1:]  # remove leading '|'
-            return cat_prefix, remainder
-        
-    # If no prefix matched, return None and full string as fuel
-    return None, category_str
-
-
-@st.cache_data
-def corresponding_cat(category):
-    if category == "FE|Transport|Freight|Road|Heavy":
-        new_cat = "Goods road transport (Heavy)"
-    elif category == "FE|Transport|Freight|Road|Light":
-        new_cat = "Goods road transport (Light)"
-        
-    elif category == "FE|Transport|Pass|Road|Bus":
-            new_cat = "Passenger car (Bus)"
-    elif category == "FE|Transport|Pass|Road|LDV|Four Wheelers":
-        new_cat = "Passenger car (Four wheelers)"
-    elif category == "FE|Transport|Pass|Road|LDV|Two Wheelers":
-        new_cat = "Passenger car (Two wheelers)"
-        
-    elif category == "FE|Transport|Pass|Domestic Aviation":
-        new_cat = "Domestic Aviation"
-    elif category == "FE|Transport|Pass|Aviation":
-        new_cat = "Aviation"
-        
-    elif category == "FE|Transport|Pass|Rail":
-        new_cat = "Passenger rail transport"
-    elif category == "FE|Transport|Freight|Rail":
-        new_cat = "Goods rail transport"
-
-    elif category == "FE|Transport|Bunkers|Freight|International Shipping":
-        new_cat = "International Shipping"
-    elif category == "FE|Transport|Freight|Domestic Shipping":
-        new_cat = "Domestic Shipping"
-
-    else:
-        return category
-    return(new_cat)
 
 
 categories = [
@@ -185,11 +194,6 @@ transport_fuel_paths = [
     "FE|Transport|Freight|Rail|Liquids|Hydrogen",
 ]
 
-industry_category_colors = {
-    "Iron & Steel": "#e41a1c",
-    "Chemicals": "#377eb8",
-    "Non-metallic minerals": "#4daf4a"
-}
 
 sub_category_mapping = {
     "FE|Transport|Freight|Road|Heavy": "Freight: Road (Heavy)",
@@ -204,6 +208,23 @@ sub_category_mapping = {
     "FE|Transport|Bunkers|Freight|International Shipping": "Freight: Shipping (International)",
     "FE|Transport|Freight|Domestic Shipping": "Freight: Shipping (Domestic)"
 }
+
+fuel_order_full = [
+    "Fossil Liquids",
+    "Fossil Gases",
+    "Biomass [Solid]",
+    "Biogenic Liquids",
+    "Biogenic Gases",
+    "Synthetic Liquids",
+    "Synthetic Gases",
+    "Methanol",
+    "Ammonia",
+    "Hydrogen",
+    "Renewable Energy Carrier"
+]
+
+ptx_carriers = ['Hydrogen', 'Ammonia', 'Methanol', 'Synthetic Gases', 'Synthetic Liquids', "Biogenic Gases", "Biogenic Liquids", "Biomass [Solid]",]
+fossil_carriers = ["Fossil Gases", "Fossil Liquids"]
 
 transport_sub_colors = {
     # Freight
@@ -222,39 +243,9 @@ transport_sub_colors = {
     "Passenger: Aviation (Domestic)": "#8073ac"      
 }
 
-industry_fuel_colors = {
-    "Ammonia": "#e41a1c",
-    "Biomass": "#fb9a99",
-    "Methanol": "#a6cee3",
-    "Hydrogen": "#fdbf6f",
-    "Biogas": "#ff7f00",
-    "Overall demand": "#b2df8a",
-    "Other": "#1f78b4"
-}
-
-
-transport_fuel_colors = {
-    "Electricity": "#a6cee3",
-    "Hydrogen": "#fdbf6f",
-    "Gases": "#fb9a99",
-    "Liquids": "#1f78b4",
-    "Other": "#e31a1c", 
-}
-
-fuel_order_full = [
-    "Fossil Liquids",
-    "Fossil Gases",
-    "Biomass [Solid]",
-    "Biogenic Liquids",
-    "Biogenic Gases",
-    "Synthetic Liquids",
-    "Synthetic Gases",
-    "Methanol",
-    "Ammonia",
-    "Hydrogen",
-    "Renewable Energy Carrier"
-]
-
+industry_category_colors = {"Iron & Steel": "#e41a1c", "Chemicals": "#377eb8", "Non-metallic minerals": "#4daf4a"}
+industry_fuel_colors = {"Ammonia": "#e41a1c","Biomass": "#fb9a99", "Methanol": "#a6cee3", "Hydrogen": "#fdbf6f", "Biogas": "#ff7f00", "Overall demand": "#b2df8a", "Other": "#1f78b4"}
+transport_fuel_colors = {"Electricity": "#a6cee3", "Hydrogen": "#fdbf6f", "Gases": "#fb9a99", "Liquids": "#1f78b4", "Other": "#e31a1c", }
 ptx_fuel_colors = {
     "Fossil Liquids": "#1a237e",
     "Fossil Gases": "#6674be",
@@ -268,12 +259,5 @@ ptx_fuel_colors = {
     "Hydrogen": "#3fa5ff",
     "Renewable Energy Carrier": "#5A4A82"
 }
-ptx_carriers = ['Hydrogen', 'Ammonia', 'Methanol', 'Synthetic Gases', 'Synthetic Liquids', "Biogenic Gases", "Biogenic Liquids", "Biomass [Solid]",]
-fossil_carriers = ["Fossil Gases", "Fossil Liquids"]
 
-comparison_colors = {
-    "Hydrogen": "#1e88e5",
-    "Other Green fuels": "#43a047",   
-    "Green fuels": "#43a047",         
-    "Fossil fuels": "#1a237e"    
-}
+comparison_colors = {"Hydrogen": "#1e88e5", "Other Green fuels": "#43a047", "Green fuels": "#43a047", "Fossil fuels": "#1a237e"}

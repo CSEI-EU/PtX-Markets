@@ -2,16 +2,22 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
-import pandas as pd
 
 from process import convert_to_alpha3
-from mappings import corresponding_cat
-from mappings import *
+from mappings import corresponding_cat, main_category_mapping, sub_category_mapping, transport_sub_colors
 
+'''
+This file contains functions to plot Transport specific visualizations.
 
-# ---- Bar plots for main categories ----
-def plot_main_transport_stack(eu27_transport, colors):
-    df = eu27_transport.copy()
+Functions included: 
+- plot_main_transport_stack: Prepares bar plots for main Transport categories.
+- plot_transport_pie_charts: Prepares pie charts to compare 2030 and 2050 fuels and categories proportions.
+- plot_transport_heatmap: Plots chloropleth map for the most consuming transport category.
+'''
+
+@st.cache_data
+def plot_main_transport_stack(transport_df, colors):
+    df = transport_df.copy()
     df['MainCategory'] = df['Category'].map(main_category_mapping)
     main_grouped = df.groupby(['Year', 'MainCategory'])['Value'].sum().reset_index()
     pivot_main = main_grouped.pivot(index='Year', columns='MainCategory', values='Value').fillna(0)
@@ -20,21 +26,15 @@ def plot_main_transport_stack(eu27_transport, colors):
     available_main = [cat for cat in main_categories if cat in pivot_main.columns]
     colors = colors[:len(available_main)]
 
-    fig = px.bar(
-        pivot_main,
-        x=pivot_main.index,
-        y=available_main,
-        labels={'value': 'Energy Demand (EJ)'},
-        color_discrete_sequence=colors
-    )
+    fig = px.bar(pivot_main, x=pivot_main.index, y=available_main, labels={'value': 'Energy Demand (EJ)'}, color_discrete_sequence=colors)
     fig.update_layout(barmode='stack', yaxis_title='Energy Demand (EJ)', legend_title='Transport mode')
     fig.update_layout(legend_orientation="h", legend_y=-0.2)
     return fig
 
 
-# ---- Pie charts to compare 2030 and 2050 values----
-def plot_transport_pie_charts(eu27_transport, year):
-    df = eu27_transport.copy()
+@st.cache_data
+def plot_transport_pie_charts(transport_df, year):
+    df = transport_df.copy()
     df['SubCategory'] = df['Category'].map(sub_category_mapping)
     sub_data = df.groupby(['Year', 'SubCategory'])['Value'].sum().reset_index()
     year_data = sub_data[sub_data['Year'] == year]
@@ -43,45 +43,26 @@ def plot_transport_pie_charts(eu27_transport, year):
     freight = year_data[year_data['SubCategory'].str.contains('Freight')]
 
     col1, col2 = st.columns(2)
-
     with col1:
-        pie_pass = px.pie(
-            passenger,
-            names='SubCategory',
-            values='Value',
-            title=f"Passenger Transport Breakdown ({year})",
-            color='SubCategory',
-            color_discrete_map=transport_sub_colors
-        )
+        pie_pass = px.pie(passenger, names='SubCategory', values='Value', title=f"Passenger Transport Breakdown ({year})",
+            color='SubCategory', color_discrete_map=transport_sub_colors)
         st.plotly_chart(pie_pass)
 
     with col2:
-        pie_freight = px.pie(
-            freight,
-            names='SubCategory',
-            values='Value',
-            title=f"Freight Transport Breakdown ({year})",
-            color='SubCategory',
-            color_discrete_map=transport_sub_colors
-        )
+        pie_freight = px.pie(freight, names='SubCategory', values='Value', title=f"Freight Transport Breakdown ({year})",
+            color='SubCategory', color_discrete_map=transport_sub_colors)
         st.plotly_chart(pie_freight)
 
 
-# ---- Heatmap for most consuming category----
 @st.cache_data
 def plot_transport_heatmap(transport_data, target_category):
     title_cat = corresponding_cat(target_category) 
     df = transport_data[(transport_data['Category'] == target_category) & (transport_data['Country'] != 'EU27')].copy()
-
     df['iso_alpha'] = df['Country'].apply(convert_to_alpha3)
     years = [2020, 2050]
     zmax = df['Value'].max()
 
-    fig = make_subplots(
-        rows=1, cols=2,
-        subplot_titles=[f"{year}" for year in years],
-        specs=[[{"type": "choropleth"}, {"type": "choropleth"}]],
-        horizontal_spacing=0.05)
+    fig = make_subplots(rows=1, cols=2, subplot_titles=[f"{year}" for year in years], specs=[[{"type": "choropleth"}, {"type": "choropleth"}]], horizontal_spacing=0.05)
 
     for i, year in enumerate(years):
         year_df = df[df['Year'] == year]
@@ -94,10 +75,7 @@ def plot_transport_heatmap(transport_data, target_category):
             zmin=0,
             zmax=zmax,
             colorbar=dict(
-                title=dict(
-                text="Demand (EJ)" if i == 1 else None,
-                font=dict(size=18)
-                ),
+                title=dict(text="Demand (EJ)" if i == 1 else None, font=dict(size=18)),
                 tickfont=dict(size=16),
                 len=0.45,
                 thickness=12,
@@ -105,12 +83,9 @@ def plot_transport_heatmap(transport_data, target_category):
                 y=0.5
             ),
             showscale=(i == 1),
-            geo=f'geo{i+1}'
-        )
-
+            geo=f'geo{i+1}')
         fig.add_trace(choropleth, row=1, col=i+1)
 
-    # Fix the legend for years 
     for ann in fig.layout.annotations:
         ann.y = 0.75
         ann.font.size = 18
@@ -124,14 +99,6 @@ def plot_transport_heatmap(transport_data, target_category):
         margin=dict(l=20, r=20, t=90, b=10),
         height=1000,
         width=1400,
-        geo=dict(
-            scope='europe', showland=True, landcolor="white",
-            lakecolor="lightblue", bgcolor='white',
-            lataxis_range=[35, 70], lonaxis_range=[-15, 35]
-        ),
-        geo2=dict(
-            scope='europe', showland=True, landcolor="white",
-            lakecolor="lightblue", bgcolor='white',
-            lataxis_range=[35, 70], lonaxis_range=[-15, 35])
-    )
+        geo=dict(scope='europe', showland=True, landcolor="white", lakecolor="lightblue", bgcolor='white', lataxis_range=[35, 70], lonaxis_range=[-15, 35]),
+        geo2=dict(scope='europe', showland=True, landcolor="white", lakecolor="lightblue", bgcolor='white', lataxis_range=[35, 70], lonaxis_range=[-15, 35]))
     return fig

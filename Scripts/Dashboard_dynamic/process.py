@@ -4,8 +4,26 @@ import pycountry
 import streamlit as st 
 from mappings import iso_to_country
 
-# ---- Get full country name from code ----
-@st.cache_data
+'''
+This files contains all relevant functions to process files and folder with results. 
+It ensures all outputs have consistent energy demand values in Exajoules (EJ), and Years as integer. 
+Industry results are in MWh and converted to EJ for consistency.
+
+Functions included:
+- convert_to_alpha3: Converts alpha 2 country codes into alpha 2 using pycountry module.
+- format_country_name: Gets the complete country name from its alpha 2 country code.
+- load_transport_data: Load the csv file for transport and convert year colun into integer.
+- load_industry_data: Load all country files from Results_per_Country folder for Industry data.
+- load_combined_outputs: Load all excel files from Outputs into one Dataframe with countries and fuels projections.
+'''
+
+def convert_to_alpha3(iso2):
+    try:
+        return pycountry.countries.get(alpha_2=iso2).alpha_3
+    except Exception:
+        return None
+    
+
 def format_country_name(code):
     if code != "EU27":
         name = iso_to_country.get(code, code) 
@@ -13,7 +31,7 @@ def format_country_name(code):
         name = "European Union"
     return f"{name} ({code})" 
 
-# ---- Load transport csv file ----
+
 @st.cache_data
 def load_transport_data(filepath):
     df = pd.read_csv(filepath)
@@ -21,9 +39,9 @@ def load_transport_data(filepath):
     return df
 
 
-# ---- Load industry files from Industry process folder ----
 @st.cache_data
 def load_industry_data(filepath):
+    MWH_TO_EJ = 3.6e-6
     industry_data = []
     industry_files = [f for f in os.listdir(filepath) if f.endswith(".xlsx")]
 
@@ -40,16 +58,14 @@ def load_industry_data(filepath):
                     "Country": country,
                     "Category": sector,
                     "Material": material.strip(),
-                    "Value": df.loc[material, sector] * 3.6 * 0.000001 # Convert to EJ 
-                })
-
+                    "Value": df.loc[material, sector] * MWH_TO_EJ})
     return pd.DataFrame(industry_data)
 
 
-# ---- Load all excel files from Outputs into one Dataframe ----
 @st.cache_data
 def load_combined_outputs(folder_path):
     all_data = []
+    
     if not os.path.exists(folder_path):
         return pd.DataFrame()
         
@@ -69,11 +85,3 @@ def load_combined_outputs(folder_path):
         all_data.append(df_long)
         
     return pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
-
-
-# Use pycountry to convert alpha 2 in alpha 3 codes 
-def convert_to_alpha3(iso2):
-    try:
-        return pycountry.countries.get(alpha_2=iso2).alpha_3
-    except:
-        return None
