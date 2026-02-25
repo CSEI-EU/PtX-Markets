@@ -4,22 +4,24 @@ import pycountry
 import streamlit as st 
 from mappings import iso_to_country
 
+# ---- Get full country name from code ----
 @st.cache_data
 def format_country_name(code):
     if code != "EU27":
         name = iso_to_country.get(code, code) 
     else:
         name = "European Union"
-        
     return f"{name} ({code})" 
 
-
+# ---- Load transport csv file ----
 @st.cache_data
 def load_transport_data(filepath):
     df = pd.read_csv(filepath)
     df['Year'] = df['Year'].astype(int)
     return df
 
+
+# ---- Load industry files from Industry process folder ----
 @st.cache_data
 def load_industry_data(filepath):
     industry_data = []
@@ -43,24 +45,8 @@ def load_industry_data(filepath):
 
     return pd.DataFrame(industry_data)
 
-@st.cache_data
-def process_ptx_excel(df):
-    # Select sector columns
-    sector_cols = [c for c in df.columns if c not in ['FuelGroup', 'Year']]
-    
-    # Create a long dataframe
-    df_long = df.melt(id_vars=['FuelGroup', 'Year'], 
-                      value_vars=sector_cols, 
-                      var_name='Sector', 
-                      value_name='Demand_EJ')
 
-    # Use streamlite sum instead of the Overall Demand row 
-    df_long = df_long[df_long['FuelGroup'] != 'Overall Demand']
-    df_long['Demand_EJ'] = pd.to_numeric(df_long['Demand_EJ'], errors='coerce').fillna(0)
-    return df_long
-
-
-# Load all excel files from Outputs into one Dataframe
+# ---- Load all excel files from Outputs into one Dataframe ----
 @st.cache_data
 def load_combined_outputs(folder_path):
     all_data = []
@@ -68,20 +54,14 @@ def load_combined_outputs(folder_path):
         return pd.DataFrame()
         
     files = [f for f in os.listdir(folder_path) if f.endswith(('.xlsx', '.csv'))]
+
     for file in files:
-        # Extract country code (e.g., DE, FR, EU27) from 'PtX_demand_DE.xlsx'
+        # Extract country code from 'PtX_demand_DE.xlsx' and conveet into dataframe
         country_code = file.split('_')[-1].split('.')[0]
         file_path = os.path.join(folder_path, file)
         df = pd.read_csv(file_path) if file.endswith('.csv') else pd.read_excel(file_path)
-        
-        # Identify sector columns
         sector_cols = [c for c in df.columns if c not in ['FuelGroup', 'Year']]
-        
-        # Transform wide to long format
-        df_long = df.melt(id_vars=['FuelGroup', 'Year'], 
-                          value_vars=sector_cols, 
-                          var_name='Sector', 
-                          value_name='Value')
+        df_long = df.melt(id_vars=['FuelGroup', 'Year'], value_vars=sector_cols, var_name='Sector', value_name='Value')
         
         # Remove pre-calculated subtotals to prevent double counting in plots
         df_long = df_long[df_long['FuelGroup'] != 'Overall Demand']
@@ -91,7 +71,7 @@ def load_combined_outputs(folder_path):
     return pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
 
 
-
+# Use pycountry to convert alpha 2 in alpha 3 codes 
 def convert_to_alpha3(iso2):
     try:
         return pycountry.countries.get(alpha_2=iso2).alpha_3

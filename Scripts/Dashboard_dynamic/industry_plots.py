@@ -20,7 +20,7 @@ Functions included:
 '''
 
 
-# ---- Bar plots ----
+# ---- Bar plots for main categories ----
 def plot_main_industry_bar(eu27_industry, colors):
     industry_grouped = eu27_industry.groupby(['Year', 'Category'])['Value'].sum().reset_index()
     pivot_industry = industry_grouped.pivot(index='Year', columns='Category', values='Value').fillna(0)
@@ -37,7 +37,7 @@ def plot_main_industry_bar(eu27_industry, colors):
     return fig
 
 
-# ---- Pie charts ----
+# ---- Pie charts to compare 2030 and 2050 values----
 @st.cache_data
 def plot_industry_pie(industry_df, year):
     data_year = industry_df[industry_df['Year'] == year].copy()
@@ -45,6 +45,7 @@ def plot_industry_pie(industry_df, year):
     cat_data = data_year.groupby('Category')['Value'].sum().reset_index()
     mat_data = data_year.groupby('Material')['Value'].sum().reset_index()
 
+    # Create two columns for each year
     col1, col2 = st.columns(2)
 
     with col1:
@@ -70,7 +71,7 @@ def plot_industry_pie(industry_df, year):
         st.plotly_chart(fig_mat)
 
 
-# ---- Heatmap ----
+# ---- Heatmap for most consuming category----
 @st.cache_data
 def plot_industry_choropleth(industry_df, target_industry_category):
     filtered_industry_data = industry_df[(industry_df['Category'] == target_industry_category) & (industry_df['Country'] != 'EU27')].copy()

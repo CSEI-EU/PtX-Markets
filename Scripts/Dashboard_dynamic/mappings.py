@@ -10,6 +10,56 @@ iso_to_country = {
     'SE': 'Sweden', 'SI': 'Slovenia', 'SK': 'Slovakia'
 }
 
+def extract_main_and_fuel(category_str, categories):
+    # Sort categories by length descending to match longest prefix first
+    categories_sorted = sorted(categories, key=len, reverse=True)
+    
+    for cat_prefix in categories_sorted:
+        if category_str.startswith(cat_prefix):
+            # Fuel is whatever comes after the prefix (skip the '|')
+            remainder = category_str[len(cat_prefix):]
+            if remainder.startswith("|"):
+                remainder = remainder[1:]  # remove leading '|'
+            return cat_prefix, remainder
+        
+    # If no prefix matched, return None and full string as fuel
+    return None, category_str
+
+
+@st.cache_data
+def corresponding_cat(category):
+    if category == "FE|Transport|Freight|Road|Heavy":
+        new_cat = "Goods road transport (Heavy)"
+    elif category == "FE|Transport|Freight|Road|Light":
+        new_cat = "Goods road transport (Light)"
+        
+    elif category == "FE|Transport|Pass|Road|Bus":
+            new_cat = "Passenger car (Bus)"
+    elif category == "FE|Transport|Pass|Road|LDV|Four Wheelers":
+        new_cat = "Passenger car (Four wheelers)"
+    elif category == "FE|Transport|Pass|Road|LDV|Two Wheelers":
+        new_cat = "Passenger car (Two wheelers)"
+        
+    elif category == "FE|Transport|Pass|Domestic Aviation":
+        new_cat = "Domestic Aviation"
+    elif category == "FE|Transport|Pass|Aviation":
+        new_cat = "Aviation"
+        
+    elif category == "FE|Transport|Pass|Rail":
+        new_cat = "Passenger rail transport"
+    elif category == "FE|Transport|Freight|Rail":
+        new_cat = "Goods rail transport"
+
+    elif category == "FE|Transport|Bunkers|Freight|International Shipping":
+        new_cat = "International Shipping"
+    elif category == "FE|Transport|Freight|Domestic Shipping":
+        new_cat = "Domestic Shipping"
+
+    else:
+        return category
+    return(new_cat)
+
+
 categories = [
     "FE|Transport|Freight|Road|Heavy",
     "FE|Transport|Freight|Road|Light",
@@ -135,27 +185,9 @@ transport_fuel_paths = [
     "FE|Transport|Freight|Rail|Liquids|Hydrogen",
 ]
 
-def extract_main_and_fuel(category_str, categories):
-    # Sort categories by length descending to match longest prefix first
-    categories_sorted = sorted(categories, key=len, reverse=True)
-    
-    for cat_prefix in categories_sorted:
-        if category_str.startswith(cat_prefix):
-            # Fuel is whatever comes after the prefix (skip the '|')
-            remainder = category_str[len(cat_prefix):]
-            if remainder.startswith("|"):
-                remainder = remainder[1:]  # remove leading '|'
-            return cat_prefix, remainder
-    # If no prefix matched, return None and full string as fuel
-    return None, category_str
-
-
-transport_main_colors = {
-    "Road": "#e41a1c",      
-    "Aviation": "#377eb8",  
-    "Rail": "#4daf4a",       
-    "Shipping": "#984ea3"    
-}
+# Color scales for pie charts
+custom_blues = ['#08306b', '#2171b5', '#6baed6', '#c6dbef', '#deebf7', '#b3cde3', '#a6bddb', '#9ebcda', '#8c96c6']
+custom_reds = ['#67000d', '#cb181d', "#f55c2d"]
 
 industry_category_colors = {
     "Iron & Steel": "#e41a1c",
@@ -249,37 +281,3 @@ comparison_colors = {
     "Green fuels": "#43a047",         
     "Fossil fuels": "#1a237e"    
 }
-
-
-@st.cache_data
-def corresponding_cat(category):
-    if category == "FE|Transport|Freight|Road|Heavy":
-        new_cat = "Goods road transport (Heavy)"
-    elif category == "FE|Transport|Freight|Road|Light":
-        new_cat = "Goods road transport (Light)"
-        
-    elif category == "FE|Transport|Pass|Road|Bus":
-            new_cat = "Passenger car (Bus)"
-    elif category == "FE|Transport|Pass|Road|LDV|Four Wheelers":
-        new_cat = "Passenger car (Four wheelers)"
-    elif category == "FE|Transport|Pass|Road|LDV|Two Wheelers":
-        new_cat = "Passenger car (Two wheelers)"
-        
-    elif category == "FE|Transport|Pass|Domestic Aviation":
-        new_cat = "Domestic Aviation"
-    elif category == "FE|Transport|Pass|Aviation":
-        new_cat = "Aviation"
-        
-    elif category == "FE|Transport|Pass|Rail":
-        new_cat = "Passenger rail transport"
-    elif category == "FE|Transport|Freight|Rail":
-        new_cat = "Goods rail transport"
-
-    elif category == "FE|Transport|Bunkers|Freight|International Shipping":
-        new_cat = "International Shipping"
-    elif category == "FE|Transport|Freight|Domestic Shipping":
-        new_cat = "Domestic Shipping"
-
-    else:
-        return category
-    return(new_cat)

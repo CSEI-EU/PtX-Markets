@@ -9,6 +9,7 @@ from mappings import corresponding_cat
 from mappings import *
 
 
+# ---- Bar plots for main categories ----
 def plot_main_transport_stack(eu27_transport, colors):
     df = eu27_transport.copy()
     df['MainCategory'] = df['Category'].map(main_category_mapping)
@@ -31,6 +32,7 @@ def plot_main_transport_stack(eu27_transport, colors):
     return fig
 
 
+# ---- Pie charts to compare 2030 and 2050 values----
 def plot_transport_pie_charts(eu27_transport, year):
     df = eu27_transport.copy()
     df['SubCategory'] = df['Category'].map(sub_category_mapping)
@@ -65,13 +67,11 @@ def plot_transport_pie_charts(eu27_transport, year):
         st.plotly_chart(pie_freight)
 
 
+# ---- Heatmap for most consuming category----
 @st.cache_data
 def plot_transport_heatmap(transport_data, target_category):
     title_cat = corresponding_cat(target_category) 
-    df = transport_data[
-        (transport_data['Category'] == target_category) &
-        (transport_data['Country'] != 'EU27')
-    ].copy()
+    df = transport_data[(transport_data['Category'] == target_category) & (transport_data['Country'] != 'EU27')].copy()
 
     df['iso_alpha'] = df['Country'].apply(convert_to_alpha3)
     years = [2020, 2050]
@@ -81,8 +81,7 @@ def plot_transport_heatmap(transport_data, target_category):
         rows=1, cols=2,
         subplot_titles=[f"{year}" for year in years],
         specs=[[{"type": "choropleth"}, {"type": "choropleth"}]],
-        horizontal_spacing=0.05
-    )
+        horizontal_spacing=0.05)
 
     for i, year in enumerate(years):
         year_df = df[df['Year'] == year]
@@ -133,7 +132,6 @@ def plot_transport_heatmap(transport_data, target_category):
         geo2=dict(
             scope='europe', showland=True, landcolor="white",
             lakecolor="lightblue", bgcolor='white',
-            lataxis_range=[35, 70], lonaxis_range=[-15, 35]
-        )
+            lataxis_range=[35, 70], lonaxis_range=[-15, 35])
     )
     return fig

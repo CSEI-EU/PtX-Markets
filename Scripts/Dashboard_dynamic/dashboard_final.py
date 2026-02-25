@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 
-# -------- Initiate the dashboard with title and graphs --------
+# -------- Initiate the dashboard with title and Key figures --------
 st.set_page_config(layout='wide')
 
 title_alignment = """
@@ -22,7 +22,7 @@ from transport_plots import *
 from industry_plots import *
 
 # Call important files
-# For Streamlite Community Cloud, need to have path from the root
+# For Streamlite Community Cloud, need to have path from the root folder
 transport_file = os.path.join('REMIND', 'Results_REMIND_JRC.csv')
 industry_path = os.path.join('Scripts', 'Industry', 'Results_per_Country')
 final_output_path = os.path.join('Outputs')
@@ -39,8 +39,6 @@ transport_data = transport_data[transport_data["Category"].isin(categories)]
 transport_data["MainCategory"] = transport_data["Category"]
 
 industry_df['Country_full'] = industry_df['Country'].map(iso_to_country)
-transport_name = 'Transport'
-industry_name = 'Industry'
 
 # -------- Side bar with relevant choices for the dashboard user --------
 with st.sidebar:
@@ -58,7 +56,6 @@ with st.sidebar:
     focus = st.radio("What is the focus of the analysis?",
     ["All energy carriers",
     "Green fuels only",
-    # "Hydrogen only",
     "Hydrogen vs other Green fuels",
     "Green fuels vs Fossil fuels"],
     index=0)
@@ -72,16 +69,15 @@ It first provides a strategic overview of Green fuels integration and total ener
 country_data = final_df[final_df['Country'] == selected_country]
 eu_data = final_df[final_df['Country'] == "EU27"]
 
-# Calculate metrics for the chose year 
+# Calculate metrics for the chosen year 
 total_eu = eu_data[eu_data['Year'] == selected_year]['Value'].sum()
 total = country_data[country_data['Year'] == selected_year]['Value'].sum()
 ptx = country_data[(country_data['Year'] == selected_year) & (country_data['FuelGroup'].isin(ptx_carriers))]['Value'].sum()
 share_ptx = (ptx / total * 100) if total > 0 else 0
 
-
+# Show metrics, and share of country in EU27 demand if relevant
 if selected_country != "EU27":
     share_country = (total / total_eu * 100) if total_eu > 0 else 0
-
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
     c2.metric(f"Share in EU27 Total demand", f"{share_country:.2f}%")
@@ -97,11 +93,7 @@ else:
 
 # Apply focus from the side bar to plot fuel type maps
 st.subheader(f"Energy demand and fuel per sector in {selected_country}")
-filtered_master = apply_focus_filter(
-    final_df[final_df['Country'] == selected_country],
-    focus
-)
-
+filtered_master = apply_focus_filter(final_df[final_df['Country'] == selected_country], focus)
 if focus in ["Hydrogen vs other Green fuels", "Green fuels vs Fossil fuels"]:
     color_map = comparison_colors
 else:
@@ -110,14 +102,12 @@ else:
 st.plotly_chart(plot_ptx_transition_wedge(filtered_master, selected_country, color_map),use_container_width=True)
 st.plotly_chart(plot_sector_ptx_intensity(filtered_master, selected_country, selected_year, color_map))
 
-# European aggregate 
-eu_avg = final_df.groupby(["Year","FuelGroup"])["Value"].sum().reset_index()
-eu_avg["Country"] = "EU27"
-
 # -------- EU27 Global energy demand and key numbers --------
 st.subheader(f"{selected_country} Global energy demand")
 
-# Get EU27 data
+# Get demand from both sectors
+transport_name = 'Transport'
+industry_name = 'Industry'
 country_transport, country_transport_demand = get_country_demand(transport_data, selected_country, transport_name)
 country_industry, country_industry_demand = get_country_demand(industry_df, selected_country,industry_name)
 combined_demand = pd.concat([country_transport_demand, country_industry_demand], ignore_index=True)
@@ -164,18 +154,15 @@ with key_num:
             """) 
 st.markdown('---')
 
-# Color sclaes for pie charts
-custom_blues = ['#08306b', '#2171b5', '#6baed6', '#c6dbef', '#deebf7', '#b3cde3', '#a6bddb', '#9ebcda', '#8c96c6']
-custom_reds = ['#67000d', '#cb181d', "#f55c2d"]
 
 # -------- Heatmaps of 2030 demand: Transport vs Industry --------
 st.subheader("Country-level energy demand by year")
 fig_maps = create_demand_heatmaps(transport_data, industry_df, selected_year)
 st.plotly_chart(fig_maps, use_container_width=True,config= {"scrollZoom": False,"displayModeBar": False})
 
+
 # ---- Organize dashboard using TABS ----
 tab1, tab2 = st.tabs(["Transport", "Industry"])
-
 with tab1:
     st.subheader("Evolution of categories - Transport")
 
@@ -191,12 +178,6 @@ with tab1:
     target_category = highest_category_info(country_transport, 2050)[0]
     fig_cat_transport = plot_transport_heatmap(transport_data, target_category)
     st.plotly_chart(fig_cat_transport, use_container_width = True, config= {"scrollZoom": False,"displayModeBar": False})
-
-
-    # Debug 
-    # st.write("TEST TO SEE")
-    # st.write(final_df[final_df["Country"] == selected_country][["Year","FuelGroup","Value"]].head(20))
-
 
 with tab2:
     st.subheader("Evolution of categories - Industry")
@@ -217,9 +198,7 @@ with tab2:
 
 # -------- Energy demand by most consuming countries --------
 st.subheader("Most energy-demanding countries over time")
-
 fig_transport, fig_industry = create_top_demanding_countries_figures(transport_data, industry_df)
-
 col1, col2 = st.columns(2)
 with col1:
     st.plotly_chart(fig_transport)

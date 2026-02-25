@@ -181,7 +181,8 @@ def create_top_demanding_countries_figures(first_sector_df, second_sector_df):
     return fig_transport, fig_industry
 
 
-# UPDATE JANUARY 2026 : focus more on the final PtX results 
+# UPDATE JANUARY 2026 : focus on the final PtX results 
+# Figure of evolution of fuels consumption between 2030 and 2050
 def plot_ptx_transition_wedge(df, country_code, color_map):
     plot_df = df[df['Country'] == country_code].groupby(['Year', 'FuelGroup'])['Value'].sum().reset_index()
     
@@ -195,8 +196,8 @@ def plot_ptx_transition_wedge(df, country_code, color_map):
     return fig
 
 
+# Bar chart showing which sectors are the biggest PtX consumers.
 def plot_sector_ptx_intensity(df, country_code, year, color_map):
-    """Bar chart showing which sectors are the biggest PtX consumers."""
     plot_df = df[(df['Country'] == country_code) & (df['Year'] == year)]
 
     fig = px.bar(plot_df, x="Sector", y="Value", color="FuelGroup",
@@ -210,27 +211,20 @@ def plot_sector_ptx_intensity(df, country_code, year, color_map):
     return fig
 
 
-# Filter for the user to chose his focus on fuel
+# Filter for the user to chose his focus on fuel or comparison
 def apply_focus_filter(df, focus):
     df = df.copy()
     if focus == "Green fuels only":
         return df[df["FuelGroup"].isin(ptx_carriers)]
 
-    # elif focus == "Hydrogen only":
-    #     return df[df["FuelGroup"] == "Hydrogen"]
-
     elif focus == "Hydrogen vs other Green fuels":
         d = df[df["FuelGroup"].isin(ptx_carriers)].copy()
-        d["FuelGroup"] = d["FuelGroup"].apply(
-            lambda x: "Hydrogen" if x == "Hydrogen" else "Other Green fuels"
-        )
+        d["FuelGroup"] = d["FuelGroup"].apply(lambda x: "Hydrogen" if x == "Hydrogen" else "Other Green fuels")
         return d
 
     elif focus == "Green fuels vs Fossil fuels":
         d = df[df["FuelGroup"].isin(ptx_carriers + fossil_carriers)].copy()
-        d["FuelGroup"] = d["FuelGroup"].apply(
-            lambda x: "Green fuels" if x in ptx_carriers else "Fossil fuels"
-        )
+        d["FuelGroup"] = d["FuelGroup"].apply(lambda x: "Green fuels" if x in ptx_carriers else "Fossil fuels")
         return d
 
     else:
