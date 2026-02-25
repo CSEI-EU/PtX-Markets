@@ -137,37 +137,3 @@ def plot_transport_heatmap(transport_data, target_category):
         )
     )
     return fig
-
-
-# ADDED JANUARY 2026: Fuel breakdown for PtX analysis
-''' 
-import plotly.express as px
-def plot_transport_ptx_bars(final_df, selected_country):
-    df = final_df[final_df['Country'] == selected_country].copy()
-    transport_modes = ['Pass Road', 'Pass Rail', 'Pass Aviation', 'Freight Road', 'Freight Rail', 'Maritime']
-    transport_modes = [c for c in transport_modes if c in df.columns]
-
-    # Convert numeric values
-    for col in transport_modes:
-        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
-
-    # Filter PtX fuels
-    ptx_df = df[df['FuelGroup'].isin(ptx_carriers)]
-
-    # Melt modes for plotting
-    ptx_melted = ptx_df.melt(id_vars=['Year','FuelGroup'], value_vars=transport_modes, var_name='Mode', value_name='Value')
-    ptx_melted = ptx_melted[ptx_melted['Value'] > 0]
-
-    fig = px.bar(
-        ptx_melted,
-        x='Year',
-        y='Value',
-        color='FuelGroup',
-        facet_col='Mode',
-        title=f'PtX fuels by transport mode for {selected_country}',
-        labels={'Value':'Energy Demand (EJ)'}
-    )
-    fig.update_layout(barmode='stack', height=500)
-    return fig
-
-'''
