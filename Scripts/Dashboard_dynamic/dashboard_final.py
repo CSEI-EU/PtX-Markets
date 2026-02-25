@@ -146,7 +146,7 @@ tabs_info = [
     "bar_plot": plot_main_industry_bar, "pie_plot": plot_industry_pie, "heatmap_plot": plot_industry_choropleth,
     "colors": ['#67000d', '#cb181d', "#f55c2d"], 
     "pie_years": [2030, 2050],
-    "heatmap_target": lambda: highest_category_info(country_transport, 2050)[0]
+    "heatmap_target": lambda: highest_category_info(country_industry, 2050)[0]
     }
 ]
 
