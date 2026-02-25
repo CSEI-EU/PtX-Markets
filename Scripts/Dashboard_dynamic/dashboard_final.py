@@ -160,6 +160,9 @@ st.subheader("Country-level energy demand by year")
 fig_maps = create_demand_heatmaps(transport_data, industry_df, selected_year)
 st.plotly_chart(fig_maps, use_container_width=True,config= {"scrollZoom": False,"displayModeBar": False})
 
+# Color scales for pie charts
+custom_blues = ['#08306b', '#2171b5', '#6baed6', '#c6dbef', '#deebf7', '#b3cde3', '#a6bddb', '#9ebcda', '#8c96c6']
+custom_reds = ['#67000d', '#cb181d', "#f55c2d"]
 
 # ---- Organize dashboard using TABS ----
 tab1, tab2 = st.tabs(["Transport", "Industry"])

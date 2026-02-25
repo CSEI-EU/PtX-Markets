@@ -185,10 +185,6 @@ transport_fuel_paths = [
     "FE|Transport|Freight|Rail|Liquids|Hydrogen",
 ]
 
-# Color scales for pie charts
-custom_blues = ['#08306b', '#2171b5', '#6baed6', '#c6dbef', '#deebf7', '#b3cde3', '#a6bddb', '#9ebcda', '#8c96c6']
-custom_reds = ['#67000d', '#cb181d', "#f55c2d"]
-
 industry_category_colors = {
     "Iron & Steel": "#e41a1c",
     "Chemicals": "#377eb8",
