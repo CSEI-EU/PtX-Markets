@@ -2,63 +2,42 @@ import streamlit as st
 import pandas as pd
 import os
 
-# -------- Initiate the dashboard with title and Key figures --------
-st.set_page_config(layout='wide')
-
-title_alignment = """
-<style>
-.centered-title {
-text-align: center;
-}
-</style>
-<h1 class="centered-title">Green Fuels and Energy demand Outlook</h1>
-"""
-st.markdown(title_alignment, unsafe_allow_html=True)
-
-from mappings import *
+from mappings import ptx_carriers, comparison_colors, ptx_fuel_colors
 from process import *
 from global_plots import * 
 from transport_plots import *
 from industry_plots import *
 
-# Call important files
+'''
+Main dashboard for Green Fuels and Energy Demand Outlook.
+This Streamlit app visualizes energy demand evolution and green fuel integration
+across Europe. It includes:
+- Comparison of green vs fossil fuels, hydrogen trends, and PtX transitions.
+- Key figures and KPIs per country or EU27.
+- Transport sector analysis: stacked bars, pie charts, heatmaps.
+- Industry sector analysis: stacked bars, pie charts, heatmaps.
+
+For detailed instructions and file structure, see README.md
+'''
+
 # For Streamlite Community Cloud, need to have path from the root folder
 transport_file = os.path.join('REMIND', 'Results_REMIND_JRC.csv')
 industry_path = os.path.join('Scripts', 'Industry', 'Results_per_Country')
 final_output_path = os.path.join('Outputs')
 
-transport_data = load_transport_data(transport_file)
-industry_df = load_industry_data(industry_path)
-final_df = load_combined_outputs(final_output_path)
+transport_data, industry_df, final_df = load_all_data()
+transport_data, industry_df, fuel_transport = prepare_data(transport_data, industry_df)
 
-fuel_transport = transport_data[transport_data['Category'].isin(transport_fuel_paths)].copy()
-fuel_transport[["MainCategory", "Fuel"]] = fuel_transport["Category"].apply(lambda x: pd.Series(extract_main_and_fuel(x, categories)))
-
-transport_data['Country_full'] = transport_data['Country'].map(iso_to_country)
-transport_data = transport_data[transport_data["Category"].isin(categories)]
-transport_data["MainCategory"] = transport_data["Category"]
-
-industry_df['Country_full'] = industry_df['Country'].map(iso_to_country)
-
-# -------- Side bar with relevant choices for the dashboard user --------
-with st.sidebar:
-    st.title("Filters")
-    all_countries = sorted(transport_data['Country'].unique())
-
-    # Set the default country to be EU27
-    default_index = 0
-    if 'EU27' in all_countries:
-        default_index = all_countries.index('EU27')
-    selected_country = st.selectbox("Select a country:", all_countries, index=default_index, format_func=format_country_name)
-
-    selected_year = st.selectbox("Select a year", [2030, 2040, 2050], index=2)
-
-    focus = st.radio("What is the focus of the analysis?",
-    ["All energy carriers",
-    "Green fuels only",
-    "Hydrogen vs other Green fuels",
-    "Green fuels vs Fossil fuels"],
-    index=0)
+# -------- Initiate the dashboard with title and Key figures --------
+st.set_page_config(layout='wide')
+st.markdown(
+    """
+    <h1 style="text-align: center;">
+        Green Fuels and Energy Demand Outlook
+    </h1>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown("""
 This dashboard explores how final energy demand evolves across Europe and how 
@@ -66,32 +45,42 @@ Green fuels progressively replace fossil energy in transport and industry.
 It first provides a strategic overview of Green fuels integration and total energy demand, and then dives into sector-specific insights for Transport and Industry.
 """)
 
+# -------- Side bar with relevant choices for the dashboard user --------
+with st.sidebar:
+    st.title("Filters")
+    all_countries = sorted(transport_data['Country'].unique())
+    default_index = all_countries.index('EU27')
+    
+    selected_country = st.selectbox("Select a country:", all_countries, index=default_index, format_func=format_country_name)
+    selected_year = st.selectbox("Select a year", [2030, 2040, 2050], index=2)
+    focus = st.radio("What is the focus of the analysis?",
+            ["All energy carriers", "Green fuels only", "Hydrogen vs other Green fuels", "Green fuels vs Fossil fuels"],index=0)
+
+
+# -------- Calculate metrics for the chosen year --------
 country_data = final_df[final_df['Country'] == selected_country]
 eu_data = final_df[final_df['Country'] == "EU27"]
 
-# Calculate metrics for the chosen year 
 total_eu = eu_data[eu_data['Year'] == selected_year]['Value'].sum()
 total = country_data[country_data['Year'] == selected_year]['Value'].sum()
 ptx = country_data[(country_data['Year'] == selected_year) & (country_data['FuelGroup'].isin(ptx_carriers))]['Value'].sum()
 share_ptx = (ptx / total * 100) if total > 0 else 0
 
-# Show metrics, and share of country in EU27 demand if relevant
+metrics = [("Total Demand", total, "EJ"), ("Green fuels Demand", ptx, "EJ"), ("Green fuels market share", share_ptx, "%")]
+
 if selected_country != "EU27":
     share_country = (total / total_eu * 100) if total_eu > 0 else 0
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
-    c2.metric(f"Share in EU27 Total demand", f"{share_country:.2f}%")
-    c3.metric(f"Green fuels Demand ({selected_year})", f"{ptx:.3f} EJ")
-    c4.metric(f"Green fuels market share", f"{share_ptx:.1f}%")
-else:
-    # Default PtX KPIs
-    c1, c2, c3 = st.columns(3)
-    c1.metric(f"Total Demand ({selected_year})", f"{total:.2f} EJ")
-    c2.metric(f"Green fuels Demand ({selected_year})", f"{ptx:.3f} EJ")
-    c3.metric(f"Green fuels market share", f"{share_ptx:.1f}%")
+    metrics.insert(1, ("Share in EU27 Total demand", share_country, "%"))
+
+cols = st.columns(len(metrics))
+for col, (label, value, unit) in zip(cols, metrics):
+    if "share" in label.lower():
+        col.metric(label + f" ({selected_year})", f"{value:.2f}{unit}")
+    else:
+        col.metric(label + f" ({selected_year})", f"{value:.3f}{unit}")
 
 
-# Apply focus from the side bar to plot fuel type maps
+# -------- Plots for energy carriers with focus filter --------
 st.subheader(f"Energy demand and fuel per sector in {selected_country}")
 filtered_master = apply_focus_filter(final_df[final_df['Country'] == selected_country], focus)
 if focus in ["Hydrogen vs other Green fuels", "Green fuels vs Fossil fuels"]:
@@ -101,6 +90,8 @@ else:
 
 st.plotly_chart(plot_ptx_transition_wedge(filtered_master, selected_country, color_map),use_container_width=True)
 st.plotly_chart(plot_sector_ptx_intensity(filtered_master, selected_country, selected_year, color_map))
+
+
 
 # -------- EU27 Global energy demand and key numbers --------
 st.subheader(f"{selected_country} Global energy demand")

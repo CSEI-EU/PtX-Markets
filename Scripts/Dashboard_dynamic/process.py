@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import pycountry
 import streamlit as st 
-from mappings import iso_to_country
+from mappings import iso_to_country, transport_fuel_paths, extract_main_and_fuel, categories
 
 '''
 This files contains all relevant functions to process files and folder with results. 
@@ -15,6 +15,8 @@ Functions included:
 - load_transport_data: Load the csv file for transport and convert year colun into integer.
 - load_industry_data: Load all country files from Results_per_Country folder for Industry data.
 - load_combined_outputs: Load all excel files from Outputs into one Dataframe with countries and fuels projections.
+- load_all_data: Combines the three above functions for cleaner main file.
+- prepare_data: Prepare clean dataframes with clear categories for all sectors.
 '''
 
 def convert_to_alpha3(iso2):
@@ -65,7 +67,7 @@ def load_industry_data(filepath):
 @st.cache_data
 def load_combined_outputs(folder_path):
     all_data = []
-    
+
     if not os.path.exists(folder_path):
         return pd.DataFrame()
         
@@ -85,3 +87,25 @@ def load_combined_outputs(folder_path):
         all_data.append(df_long)
         
     return pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
+
+
+def load_all_data(transport_file, industry_path, final_output_path):
+    transport_data = load_transport_data(transport_file)
+    industry_df = load_industry_data(industry_path)
+    final_df = load_combined_outputs(final_output_path)
+    return transport_data, industry_df, final_df
+
+
+def prepare_data(transport_data, industry_df):
+    fuel_transport = transport_data[transport_data["Category"].isin(transport_fuel_paths)].copy()
+    fuel_transport[["MainCategory", "Fuel"]] = (fuel_transport["Category"].apply(lambda x: pd.Series(extract_main_and_fuel(x, categories))))
+
+    # Clean transport data
+    transport_data["Country_full"] = transport_data["Country"].map(iso_to_country)
+    transport_data = transport_data[transport_data["Category"].isin(categories)]
+    transport_data["MainCategory"] = transport_data["Category"]
+
+    # Clean industry data
+    industry_df["Country_full"] = industry_df["Country"].map(iso_to_country)
+
+    return transport_data, industry_df, fuel_transport
