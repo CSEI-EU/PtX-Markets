@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import os
-
 from mappings import ptx_carriers, comparison_colors, ptx_fuel_colors
 from process import *
 from global_plots import * 
@@ -25,19 +24,20 @@ transport_file = os.path.join('REMIND', 'Results_REMIND_JRC.csv')
 industry_path = os.path.join('Scripts', 'Industry', 'Results_per_Country')
 final_output_path = os.path.join('Outputs')
 
-transport_data, industry_df, final_df = load_all_data()
+transport_data, industry_df, final_df = load_all_data(transport_file, industry_path, final_output_path)
 transport_data, industry_df, fuel_transport = prepare_data(transport_data, industry_df)
 
 # -------- Initiate the dashboard with title and Key figures --------
 st.set_page_config(layout='wide')
-st.markdown(
-    """
-    <h1 style="text-align: center;">
-        Green Fuels and Energy Demand Outlook
-    </h1>
-    """,
-    unsafe_allow_html=True,
-)
+title_alignment = """
+    <style>
+    .centered-title {
+    text-align: center;
+    }
+    </style>
+    <h1 class="centered-title">Green Fuels and Energy demand Outlook</h1>
+"""
+st.markdown(title_alignment, unsafe_allow_html=True)
 
 st.markdown("""
 This dashboard explores how final energy demand evolves across Europe and how 
