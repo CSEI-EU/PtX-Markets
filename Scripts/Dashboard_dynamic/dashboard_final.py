@@ -7,18 +7,6 @@ from global_plots import *
 from transport_plots import *
 from industry_plots import *
 
-'''
-Main dashboard for Green Fuels and Energy Demand Outlook.
-This Streamlit app visualizes energy demand evolution and green fuel integration
-across Europe. It includes:
-- Comparison of green vs fossil fuels, hydrogen trends, and PtX transitions.
-- Key figures and KPIs per country or EU27.
-- Transport sector analysis: stacked bars, pie charts, heatmaps.
-- Industry sector analysis: stacked bars, pie charts, heatmaps.
-
-For detailed instructions and file structure, see README.md
-'''
-
 # For Streamlite Community Cloud, need to have path from the root folder
 transport_file = os.path.join('REMIND', 'Results_REMIND_JRC.csv')
 industry_path = os.path.join('Scripts', 'Industry', 'Results_per_Country')
@@ -29,15 +17,14 @@ transport_data, industry_df, fuel_transport = prepare_data(transport_data, indus
 
 # -------- Initiate the dashboard with title and Key figures --------
 st.set_page_config(layout='wide')
-title_alignment = """
-    <style>
-    .centered-title {
-    text-align: center;
-    }
-    </style>
-    <h1 class="centered-title">Green Fuels and Energy demand Outlook</h1>
-"""
-st.markdown(title_alignment, unsafe_allow_html=True)
+st.markdown(
+    """
+    <h1 style="text-align: center;">
+        Green Fuels and Energy Demand Outlook
+    </h1>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown("""
 This dashboard explores how final energy demand evolves across Europe and how 
@@ -167,12 +154,12 @@ tab_objs = st.tabs([tab["name"] for tab in tabs_info])
 for tab_obj, info in zip(tab_objs, tabs_info):
     with tab_obj:
         st.subheader(f"Evolution of categories - {info['name']}")
-        fig_bar = info['bar_func'](info["data"], info["colors"])
+        fig_bar = info['bar_plot'](info["data"], info["colors"])
         st.plotly_chart(fig_bar)
 
         for year in info["pie_years"]:
-            info["pie_func"](info["data"], year)
+            info["pie_plot"](info["data"], year)
 
         target = info["heatmap_target"]()
-        fig_heatmap = info["heatmap_func"](info["full_data"], target)
+        fig_heatmap = info["heatmap_plot"](info["full_data"], target)
         st.plotly_chart(fig_heatmap, use_container_width=True, config={"scrollZoom": False, "displayModeBar": False})
