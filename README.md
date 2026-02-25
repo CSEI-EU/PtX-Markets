@@ -3,6 +3,7 @@
 This project visualizes and analyzes the evolution of energy demand in Europe with a focus on Green Fuels integration. It uses data from REMIND and JRC and produces a dynamic dashboard for interactive analysis.
 
 ### Project Structure
+'''
 PtX-Markets/
 ├── Inputs/
 │   └── JRC-IDEES (2021) raw data and Neuwirth (2024) for Industry
@@ -32,6 +33,7 @@ PtX-Markets/
 │       └── Index.html file for static version of the dashboard on very few data (DK and EU27)
 │
 └── README.md
+''' 
 
 ### Usage
 
