@@ -8,7 +8,7 @@ from transport_plots import *
 from industry_plots import *
 
 # For Streamlite Community Cloud, need to have path from the root folder
-transport_file = os.path.join('REMIND', 'Results_REMIND_JRC.csv')
+transport_file = os.path.join('REMIND', '.Results_REMIND_JRC.csv')
 industry_path = os.path.join('Scripts', 'Industry', 'Results_per_Country')
 final_output_path = os.path.join('Outputs')
 
