@@ -20,7 +20,7 @@ st.set_page_config(layout='wide')
 st.markdown(
     """
     <h1 style="text-align: center;">
-        Green Fuels and Energy Demand Outlook
+        Green Fuels and Final Energy Demand Outlook
     </h1>
     """,
     unsafe_allow_html=True,
@@ -68,7 +68,7 @@ for col, (label, value, unit) in zip(cols, metrics):
 
 
 # -------- Plots for energy carriers with focus filter --------
-st.subheader(f"Energy demand and fuel per sector in {selected_country}")
+st.subheader(f"Final Energy demand and fuel per sector in {selected_country}")
 filtered_master = apply_focus_filter(final_df[final_df['Country'] == selected_country], focus)
 if focus in ["Hydrogen vs other Green fuels", "Green fuels vs Fossil fuels"]:
     color_map = comparison_colors
