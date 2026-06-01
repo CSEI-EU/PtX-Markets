@@ -166,6 +166,7 @@ transport_fuel_paths = [
     "FE|Transport|Bunkers|Pass|International Aviation|Liquids",
 
     # Passenger Domestic Aviation
+    "FE|Transport|Pass|Domestic Aviation|Electricity",
     "FE|Transport|Pass|Domestic Aviation|Hydrogen",
     "FE|Transport|Pass|Domestic Aviation|Liquids",
     "FE|Transport|Pass|Domestic Aviation|Liquids|Biomass",
@@ -173,6 +174,7 @@ transport_fuel_paths = [
     "FE|Transport|Pass|Domestic Aviation|Liquids|Hydrogen",
 
     # Passenger Aviation
+    "FE|Transport|Pass|Aviation|Electricity",
     "FE|Transport|Pass|Aviation|Hydrogen",
     "FE|Transport|Pass|Aviation|Liquids",
     "FE|Transport|Pass|Aviation|Liquids|Biomass",
@@ -180,6 +182,7 @@ transport_fuel_paths = [
     "FE|Transport|Pass|Aviation|Liquids|Hydrogen",
 
     # Passenger Rail
+    "FE|Transport|Pass|Rail|Electricity",
     "FE|Transport|Pass|Rail|Hydrogen",
     "FE|Transport|Pass|Rail|Liquids",
     "FE|Transport|Pass|Rail|Liquids|Biomass",
@@ -187,6 +190,7 @@ transport_fuel_paths = [
     "FE|Transport|Pass|Rail|Liquids|Hydrogen",
 
     # Freight Rail
+    "FE|Transport|Freight|Rail|Electricity",
     "FE|Transport|Freight|Rail|Hydrogen",
     "FE|Transport|Freight|Rail|Liquids", 
     "FE|Transport|Freight|Rail|Liquids|Biomass",
@@ -220,6 +224,7 @@ fuel_order_full = [
     "Methanol",
     "Ammonia",
     "Hydrogen",
+    "Electricity",
     "Renewable Energy Carrier"
 ]
 
@@ -257,6 +262,7 @@ ptx_fuel_colors = {
     "Methanol": "#009E73",
     "Ammonia": "#ab47bc",
     "Hydrogen": "#3fa5ff",
+    "Electricity": "#17becf",
     "Renewable Energy Carrier": "#5A4A82"
 }
 
