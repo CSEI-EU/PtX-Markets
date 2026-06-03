@@ -15,10 +15,6 @@ final_output_path = os.path.join('Outputs')
 transport_data, industry_df, final_df = load_all_data(transport_file, industry_path, final_output_path)
 transport_data, industry_df, fuel_transport = prepare_data(transport_data, industry_df)
 
-print("Unique FuelGroups in final_df:", final_df['FuelGroup'].unique())
-print("Electricity rows in final_df:")
-print(final_df[final_df['FuelGroup'] == 'Electricity'].head())
-
 # -------- Initiate the dashboard with title and Key figures --------
 st.set_page_config(layout='wide')
 st.markdown(
