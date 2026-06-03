@@ -215,6 +215,7 @@ sub_category_mapping = {
 
 fuel_order_full = [
     "Fossil Liquids",
+    "Fossil Residuals",
     "Fossil Gases",
     "Biomass [Solid]",
     "Biogenic Liquids",
@@ -229,7 +230,7 @@ fuel_order_full = [
 ]
 
 ptx_carriers = ['Hydrogen', 'Ammonia', 'Methanol', 'Synthetic Gases', 'Synthetic Liquids', "Biogenic Gases", "Biogenic Liquids", "Biomass [Solid]",]
-fossil_carriers = ["Fossil Gases", "Fossil Liquids"]
+fossil_carriers = ["Fossil Gases", "Fossil Liquids", "Fossil Residuals"]
 
 transport_sub_colors = {
     # Freight
@@ -254,6 +255,7 @@ transport_fuel_colors = {"Electricity": "#a6cee3", "Hydrogen": "#fdbf6f", "Gases
 ptx_fuel_colors = {
     "Fossil Liquids": "#1a237e",
     "Fossil Gases": "#6674be",
+    "Fossil Residuals": "#283FF1",
     "Biomass [Solid]": "#984e43",
     "Biogenic Liquids": "#7cb342",
     "Biogenic Gases": "#cddc39",

@@ -166,7 +166,9 @@ def create_top_demanding_countries_figures(first_sector_df, second_sector_df):
 
 
 def plot_ptx_transition_wedge(df, country_code, color_map):
-    plot_df = df[df['Country'] == country_code].groupby(['Year', 'FuelGroup'])['Value'].sum().reset_index()
+    plot_df = df[df['Country'] == country_code].copy()
+    plot_df.loc[plot_df['FuelGroup'] == 'Power', 'FuelGroup'] = 'Electricity'
+    plot_df = plot_df.groupby(['Year', 'FuelGroup'])['Value'].sum().reset_index()
     
     fig = px.area(plot_df, x="Year", y="Value", color="FuelGroup",
                   color_discrete_map=color_map,
@@ -180,7 +182,8 @@ def plot_ptx_transition_wedge(df, country_code, color_map):
 
 
 def plot_sector_ptx_intensity(df, country_code, year, color_map):
-    plot_df = df[(df['Country'] == country_code) & (df['Year'] == year)]
+    plot_df = df[(df['Country'] == country_code) & (df['Year'] == year)].copy()
+    plot_df.loc[plot_df['FuelGroup'] == 'Power', 'FuelGroup'] = 'Electricity'
 
     fig = px.bar(plot_df, x="Sector", y="Value", color="FuelGroup",
                  title=f"Sectoral Fuel Mix in {year} ({country_code})",
@@ -197,6 +200,8 @@ def plot_sector_ptx_intensity(df, country_code, year, color_map):
 
 def apply_focus_filter(df, focus):
     df = df.copy()
+    df.loc[df['FuelGroup'] == 'Power', 'FuelGroup'] = 'Electricity'
+    
     if focus == "Green fuels only":
         return df[df["FuelGroup"].isin(ptx_carriers)]
 
