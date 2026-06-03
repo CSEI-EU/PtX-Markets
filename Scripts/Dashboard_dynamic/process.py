@@ -80,6 +80,7 @@ def load_combined_outputs(folder_path):
         df = pd.read_csv(file_path) if file.endswith('.csv') else pd.read_excel(file_path)
         sector_cols = [c for c in df.columns if c not in ['FuelGroup', 'Year']]
         df_long = df.melt(id_vars=['FuelGroup', 'Year'], value_vars=sector_cols, var_name='Sector', value_name='Value')
+        df_long["FuelGroup"] = df_long["FuelGroup"].replace({"Power": "Electricity"})
         
         # Remove pre-calculated subtotals to prevent double counting in plots
         df_long = df_long[df_long['FuelGroup'] != 'Overall Demand']

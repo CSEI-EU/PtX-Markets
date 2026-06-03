@@ -15,6 +15,9 @@ final_output_path = os.path.join('Outputs')
 transport_data, industry_df, final_df = load_all_data(transport_file, industry_path, final_output_path)
 transport_data, industry_df, fuel_transport = prepare_data(transport_data, industry_df)
 
+st.write("FuelGroups in final_df:")
+st.write(sorted(final_df["FuelGroup"].unique()))
+
 # -------- Initiate the dashboard with title and Key figures --------
 st.set_page_config(layout='wide')
 st.markdown(
