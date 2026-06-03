@@ -217,6 +217,7 @@ fuel_order_full = [
     "Fossil Liquids",
     "Fossil Residuals",
     "Fossil Gases",
+    "Electricity",
     "Biomass [Solid]",
     "Biogenic Liquids",
     "Biogenic Gases",
@@ -225,7 +226,6 @@ fuel_order_full = [
     "Methanol",
     "Ammonia",
     "Hydrogen",
-    "Electricity",
     "Renewable Energy Carrier"
 ]
 
@@ -256,6 +256,7 @@ ptx_fuel_colors = {
     "Fossil Liquids": "#1a237e",
     "Fossil Gases": "#6674be",
     "Fossil Residuals": "#283FF1",
+    "Electricity": "#f88989",
     "Biomass [Solid]": "#984e43",
     "Biogenic Liquids": "#7cb342",
     "Biogenic Gases": "#cddc39",
@@ -264,7 +265,6 @@ ptx_fuel_colors = {
     "Methanol": "#009E73",
     "Ammonia": "#ab47bc",
     "Hydrogen": "#3fa5ff",
-    "Electricity": "#17becf",
     "Renewable Energy Carrier": "#5A4A82"
 }
 
