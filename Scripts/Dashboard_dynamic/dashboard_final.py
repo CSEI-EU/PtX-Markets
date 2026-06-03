@@ -15,9 +15,6 @@ final_output_path = os.path.join('Outputs')
 transport_data, industry_df, final_df = load_all_data(transport_file, industry_path, final_output_path)
 transport_data, industry_df, fuel_transport = prepare_data(transport_data, industry_df)
 
-st.write("FuelGroups in final_df:")
-st.write(sorted(final_df["FuelGroup"].unique()))
-
 # -------- Initiate the dashboard with title and Key figures --------
 st.set_page_config(layout='wide')
 st.markdown(
@@ -43,8 +40,23 @@ with st.sidebar:
     
     selected_country = st.selectbox("Select a country:", all_countries, index=default_index, format_func=format_country_name)
     selected_year = st.selectbox("Select a year", [2030, 2040, 2050], index=2)
+
+    selected_scenario = st.selectbox("Scenario", ["Electrification", "Hydrogen", "Ammonia", "Methanol"])
+
     focus = st.radio("What is the focus of the analysis?",
             ["All energy carriers", "Green fuels only", "Hydrogen vs other Green fuels", "Green fuels vs Fossil fuels"],index=0)
+
+
+scenario_descriptions = {
+    "Electrification":
+        "Direct electrification becomes the dominant decarbonization pathway.",
+    "Hydrogen":
+        "Hydrogen becomes a dominant renewable energy carrier.",
+    "Ammonia":
+        "Ammonia plays a central role as an alternative fuel, especially in maritime transport.",
+    "Methanol":
+        "Methanol is deployed widely in shipping, aviation and chemicals."}
+st.info(scenario_descriptions[selected_scenario])
 
 
 # -------- Calculate metrics for the chosen year --------

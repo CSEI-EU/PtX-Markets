@@ -256,7 +256,7 @@ ptx_fuel_colors = {
     "Fossil Liquids": "#1a237e",
     "Fossil Gases": "#6674be",
     "Fossil Residuals": "#283FF1",
-    "Electricity": "#f88989",
+    "Electricity": "#90A4AE",
     "Biomass [Solid]": "#984e43",
     "Biogenic Liquids": "#7cb342",
     "Biogenic Gases": "#cddc39",
