@@ -16,7 +16,7 @@ scenario_output_path = os.path.join('Outputs', 'Scenarios')
 transport_data, industry_df, final_df_baseline = load_all_data(transport_file, industry_path, final_output_path)
 transport_data, industry_df, fuel_transport = prepare_data(transport_data, industry_df)
 
-scenarios = ["Baseline", "Electrification", "Hydrogen", "Ammonia", "Methanol"]
+scenarios = ["Reference", "Electrification", "Hydrogen", "Ammonia", "Methanol"]
  
 # -------- Initiate the dashboard with title and Key figures --------
 st.set_page_config(layout='wide')
@@ -44,39 +44,58 @@ with st.sidebar:
     selected_country = st.selectbox("Select a country:", all_countries, index=default_index, format_func=format_country_name)
     selected_year = st.selectbox("Select a year", [2030, 2040, 2050], index=2)
 
-    selected_scenario = st.selectbox("Scenario", scenarios)
+    selected_scenario = st.selectbox("Scenario", scenarios, index=scenarios.index("Electrification"))
 
     focus = st.radio("What is the focus of the analysis?",
             ["All energy carriers", "Green fuels only", "Hydrogen vs other Green fuels", "Green fuels vs Fossil fuels"],index=0)
 
 
-if selected_scenario == "Baseline":
+if selected_scenario == "Reference":
     final_df = final_df_baseline
 else:
     scenario_df = load_scenario_outputs(selected_scenario, scenario_output_path)
     if scenario_df.empty:
-        st.sidebar.warning(
-            f"No files found for scenario '{selected_scenario}'. Showing baseline instead."
-        )
+        st.sidebar.warning(f"No files found for scenario '{selected_scenario}'.")
         final_df = final_df_baseline
     else:
         final_df = scenario_df
  
-
+'''
 scenario_descriptions = {
-    "Baseline":
-        "Reference projection without scenario-specific fuel-mix assumptions.",
+    "Reference":
+        "Reference demand projection without additional fuel allocation assumptions.",
     "Electrification":
-        "Direct electrification becomes the dominant decarbonization pathway.",
+        "Electricity becomes the preferred energy carrier wherever technically feasible. Fossil fuels are phased out by 2050.",
     "Hydrogen":
-        "Hydrogen becomes a dominant renewable energy carrier.",
+        "Hydrogen is prioritised in heavy industry and freight transport. Electricity remains dominant for passenger mobility.",
     "Ammonia":
-        "Ammonia plays a central role as an alternative fuel, especially in maritime transport.",
+        "Ammonia becomes the preferred maritime fuel. Hydrogen remains important for industrial applications. Passenger transport remains largely electrified.",
     "Methanol":
-        "Methanol is deployed widely in shipping, aviation and chemicals."}
+        "Methanol is prioritised in maritime transport and chemicals. Road transport remains mostly electrified."}
 
 st.info(scenario_descriptions[selected_scenario])
+'''
 
+with st.expander("Scenario assumptions"):
+    st.markdown("""
+### General assumptions
+- Overall energy demand follows the reference projection.
+- Scenarios only modify the allocation of energy carriers.
+- Fossil fuels are phased out by 2050.
+- Countries already ahead of the assumed renewable shares are not forced backwards.
+
+### Electrification
+• Electricity becomes the dominant energy carrier wherever technically feasible.
+
+### Hydrogen
+• Hydrogen is prioritised in industry and freight transport.
+
+### Ammonia
+• Ammonia is prioritised for maritime applications.
+
+### Methanol
+• Methanol is prioritised for maritime transport and chemicals.
+""")
 
 # -------- Calculate metrics for the chosen year --------
 country_data = final_df[final_df['Country'] == selected_country]
