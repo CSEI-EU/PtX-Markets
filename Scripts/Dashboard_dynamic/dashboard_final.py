@@ -60,7 +60,6 @@ else:
     else:
         final_df = scenario_df
  
-'''
 scenario_descriptions = {
     "Reference":
         "Reference demand projection without additional fuel allocation assumptions.",
@@ -74,28 +73,6 @@ scenario_descriptions = {
         "Methanol is prioritised in maritime transport and chemicals. Road transport remains mostly electrified."}
 
 st.info(scenario_descriptions[selected_scenario])
-'''
-
-with st.expander("Scenario assumptions"):
-    st.markdown("""
-### General assumptions
-- Overall energy demand follows the reference projection.
-- Scenarios only modify the allocation of energy carriers.
-- Fossil fuels are phased out by 2050.
-- Countries already ahead of the assumed renewable shares are not forced backwards.
-
-### Electrification
-• Electricity becomes the dominant energy carrier wherever technically feasible.
-
-### Hydrogen
-• Hydrogen is prioritised in industry and freight transport.
-
-### Ammonia
-• Ammonia is prioritised for maritime applications.
-
-### Methanol
-• Methanol is prioritised for maritime transport and chemicals.
-""")
 
 # -------- Calculate metrics for the chosen year --------
 country_data = final_df[final_df['Country'] == selected_country]
