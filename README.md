@@ -141,4 +141,4 @@ If the project is accompanied by a scientific publication in the future, please 
 
 ## License
 
-The PtX-Markets Energy Demand Project is distributed under the license specified in the `LICENSE` file.
+The PtX-Markets Energy Demand Project is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for details.
