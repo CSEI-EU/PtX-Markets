@@ -1,6 +1,8 @@
 # PtX-Markets Energy Demand Dashboard
 
-**CSEI's Power-to-X Energy Demand Model**
+<img width="1839" height="832" alt="ptx_markets_dashboard" src="https://github.com/user-attachments/assets/e75d5978-f671-425f-820c-f403c92c1173" />
+
+Explore the interactive dashboard of the **[Power-to-X Energy Demand Model](https://ptx-markets-results.streamlit.app/)**
 
 The PtX-Markets Energy Demand Dashboard is developed by the Copenhagen School of Energy Infrastructure (CSEI). The project provides a framework for estimating and visualizing future demand for green fuels across Europe based on publicly available energy scenarios and sectoral demand data.
 
