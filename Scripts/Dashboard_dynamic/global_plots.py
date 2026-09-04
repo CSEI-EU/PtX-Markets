@@ -217,3 +217,34 @@ def apply_focus_filter(df, focus):
 
     else:
         return df
+
+
+# Add July 2026: Function to plot the fuel shares per sector
+def plot_sector_transition_from_scenario(df, sector, country_code, scenario, color_map):
+    fuel_df = df[df["FuelGroup"] != "Overall Demand"].copy()
+
+    plot_df = fuel_df[["Year", "FuelGroup", sector]].copy()
+    plot_df = plot_df.rename(columns={sector: "Value"})
+    plot_df["Country"] = country_code
+
+    plot_df.loc[plot_df["FuelGroup"] == "Power","FuelGroup"] = "Electricity"
+
+    fig = px.area(plot_df,x="Year",y="Value",color="FuelGroup", color_discrete_map=color_map,
+        category_orders={"Year": [2030,2040,2050],"FuelGroup": fuel_order_full},
+        labels={"Value": "Demand (EJ)","FuelGroup": "Fuel type"})
+
+    fig.update_traces(
+        hovertemplate=
+        "<b>%{fullData.name}</b><br>" +
+        "Demand: %{y:.3f} EJ" +
+        "<extra></extra>"
+    )
+
+    fig.update_layout(
+        title=f"{country_code} — {sector} transition | {scenario}",
+        yaxis_title="Energy Demand (EJ)",
+        hovermode="x unified",
+        legend_title_text=""
+    )
+
+    return fig
